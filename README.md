@@ -107,6 +107,7 @@ Author
 ------
 
 [Carlos Eduardo Cervantes Arteaga]
+Software QA Engineer
 
 
 
