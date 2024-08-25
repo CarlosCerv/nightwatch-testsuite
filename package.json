@@ -4,8 +4,8 @@
   "main": "index.js",
   "scripts": {
     "TEST:001_TODOIST_USER_LOGIN_SUCCESS": "nightwatch test/tests/testTodoistLogin.spec.js --testcase '001_TODOIST_USER_LOGIN_SUCCESS' --reporter config/html-reporter/html-reporter.js",
-    "TEST:002_TODOIST_USER_LOGIN_INCORRECT_EMAIL": "nightwatch test/tests/testTodoistLogin.spec.js --testcase '002_TODOIST_USER_LOGIN_INCORRECT_EMAIL' --reporter config/html-reporter/html-reporter.js", 
-    "TEST:003_TODOIST_USER_LOGIN_INCORRECT_PASSWORD": "nightwatch test/tests/testTodoistLogin.spec.js --testcase '003_TODOIST_USER_LOGIN_INCORRECT_PASSWORD' --reporter config/html-reporter/html-reporter.js" 
+    "TEST:002_TODOIST_USER_LOGIN_INCORRECT_EMAIL": "nightwatch test/tests/testTodoistLogin.spec.js --testcase '002_TODOIST_USER_LOGIN_INCORRECT_EMAIL' --reporter config/html-reporter/html-reporter.js",
+    "TEST:003_TODOIST_USER_LOGIN_INCORRECT_PASSWORD": "nightwatch test/tests/testTodoistLogin.spec.js --testcase '003_TODOIST_USER_LOGIN_INCORRECT_PASSWORD' --reporter config/html-reporter/html-reporter.js"
   },
   "keywords": [],
   "author": "Carlos Cervantes",
@@ -17,9 +17,9 @@
     "path": "^0.12.7"
   },
   "devDependencies": {
-    "chromedriver": "^98.0.0",
+    "chromedriver": "^128.0.0",
     "dotenv": "^16.0.0",
-    "geckodriver": "^3.0.1",
+    "geckodriver": "^4.4.3",
     "nightwatch": "^2.0.10",
     "nightwatch-slack-reporter": "0.0.2",
     "selenium-webdriver": "^4.1.1"
