@@ -119,23 +119,33 @@ jobs:
           rm -f $(which chromedriver) || true
           rm -rf node_modules/chromedriver
           
-          # Install ChromeDriver using Homebrew
-          echo "Installing ChromeDriver via Homebrew..."
-          brew install --cask chromedriver
+          # Download ChromeDriver directly from Google's Chrome for Testing
+          CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}.0.7339.207/mac-arm64/chromedriver-mac-arm64.zip"
+          echo "Downloading ChromeDriver from: $CHROMEDRIVER_URL"
           
-          # Start ChromeDriver to initialize it
-          echo "Initializing ChromeDriver..."
-          xattr -d com.apple.quarantine /usr/local/bin/chromedriver || true
+          # Create directories
+          mkdir -p ./chromedriver
           
-          # Set permissions and environment
+          # Download and extract ChromeDriver
+          curl -L "$CHROMEDRIVER_URL" -o ./chromedriver/chromedriver.zip
+          unzip ./chromedriver/chromedriver.zip -d ./chromedriver
+          
+          # Move ChromeDriver to the correct location
+          sudo mkdir -p /usr/local/bin
+          sudo mv ./chromedriver/chromedriver-mac-arm64/chromedriver /usr/local/bin/
+          
+          # Set permissions
+          sudo xattr -d com.apple.quarantine /usr/local/bin/chromedriver || true
           sudo chmod +x /usr/local/bin/chromedriver
+          
+          # Set environment variable
           echo "CHROMEDRIVER_PATH=/usr/local/bin/chromedriver" >> $GITHUB_ENV
           
-          # Test ChromeDriver
+          # Verify installation
           echo "Testing ChromeDriver..."
           /usr/local/bin/chromedriver --version
           
-          # Start ChromeDriver and test connection
+          # Test ChromeDriver connection
           echo "Testing ChromeDriver connection..."
           /usr/local/bin/chromedriver --port=9515 &
           CHROMEDRIVER_PID=$!
@@ -147,11 +157,16 @@ jobs:
           if curl -s http://localhost:9515/status > /dev/null; then
             echo "ChromeDriver is responding on port 9515"
             kill $CHROMEDRIVER_PID || true
+            wait $CHROMEDRIVER_PID 2>/dev/null || true
           else
             echo "Error: ChromeDriver not responding"
             kill $CHROMEDRIVER_PID || true
+            wait $CHROMEDRIVER_PID 2>/dev/null || true
             exit 1
           fi
+          
+          # Cleanup
+          rm -rf ./chromedriver
           
           # Install chromedriver with specific version handling
           install_chromedriver() {

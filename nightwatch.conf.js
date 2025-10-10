@@ -33,14 +33,18 @@ module.exports = {
         start_process: true,
         server_path: process.env.CHROMEDRIVER_PATH || '/usr/local/bin/chromedriver',
         port: 9515,
+        host: 'localhost',
         cli_args: [
           '--verbose',
-          '--whitelisted-ips=""'
+          '--whitelisted-ips=""',
+          '--port=9515'
         ],
         timeout_options: {
           timeout: 60000,
           retry_attempts: 5
-        }
+        },
+        check_process: true,
+        default_path_prefix: ''
       },
       desiredCapabilities: {
         browserName: 'chrome',
