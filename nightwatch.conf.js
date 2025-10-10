@@ -30,17 +30,17 @@ module.exports = {
     
     chrome: {
       webdriver: {
-        server_path: process.env.CHROMEDRIVER_PATH || require('chromedriver').path,
+        start_process: true,
+        server_path: process.env.CHROMEDRIVER_PATH || '/usr/local/bin/chromedriver',
         port: 9515,
         cli_args: [
           '--verbose',
-          '--log-level=DEBUG'
+          '--whitelisted-ips=""'
         ],
         timeout_options: {
           timeout: 60000,
           retry_attempts: 5
-        },
-        check_process: true
+        }
       },
       desiredCapabilities: {
         browserName: 'chrome',
@@ -51,16 +51,9 @@ module.exports = {
             '--disable-gpu',
             '--disable-dev-shm-usage',
             '--disable-software-rasterizer',
-            '--window-size=1920,1080',
-            '--enable-logging',
-            '--v=1'
+            '--window-size=1920,1080'
           ],
-          w3c: true,
-          excludeSwitches: ['enable-logging'],
-          prefs: {
-            'download.default_directory': '/tmp',
-            'download.prompt_for_download': false
-          }
+          w3c: true
         },
         acceptInsecureCerts: true,
         acceptSslCerts: true
@@ -94,11 +87,6 @@ module.exports = {
           cleanSession: true
         },
         acceptInsecureCerts: true
-      },
-      globals: {
-        waitForConditionTimeout: 15000,
-        retryAssertionTimeout: 5000,
-        throwOnMultipleElementsReturned: false
       }
     },
     

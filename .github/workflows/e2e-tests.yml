@@ -115,21 +115,43 @@ jobs:
         run: |
           echo "Installing dependencies for Chrome version $CHROME_VERSION"
           
-          # First fix any npm vulnerabilities
-          npm audit fix --force || true
+          # Clean up any existing ChromeDriver installations
+          rm -f $(which chromedriver) || true
+          rm -rf node_modules/chromedriver
           
-          # Function to verify ChromeDriver
-          verify_chromedriver() {
-            if [ -f "$(npm bin)/chromedriver" ]; then
-              CHROMEDRIVER_PATH=$(npm bin)/chromedriver
-              echo "CHROMEDRIVER_PATH=$CHROMEDRIVER_PATH" >> $GITHUB_ENV
-              chmod +x "$CHROMEDRIVER_PATH"
-              echo "Testing ChromeDriver..."
-              "$CHROMEDRIVER_PATH" --version
-              return 0
-            fi
-            return 1
-          }
+          # Install ChromeDriver using Homebrew
+          echo "Installing ChromeDriver via Homebrew..."
+          brew install --cask chromedriver
+          
+          # Start ChromeDriver to initialize it
+          echo "Initializing ChromeDriver..."
+          xattr -d com.apple.quarantine /usr/local/bin/chromedriver || true
+          
+          # Set permissions and environment
+          sudo chmod +x /usr/local/bin/chromedriver
+          echo "CHROMEDRIVER_PATH=/usr/local/bin/chromedriver" >> $GITHUB_ENV
+          
+          # Test ChromeDriver
+          echo "Testing ChromeDriver..."
+          /usr/local/bin/chromedriver --version
+          
+          # Start ChromeDriver and test connection
+          echo "Testing ChromeDriver connection..."
+          /usr/local/bin/chromedriver --port=9515 &
+          CHROMEDRIVER_PID=$!
+          
+          # Wait for ChromeDriver to start
+          sleep 5
+          
+          # Test connection
+          if curl -s http://localhost:9515/status > /dev/null; then
+            echo "ChromeDriver is responding on port 9515"
+            kill $CHROMEDRIVER_PID || true
+          else
+            echo "Error: ChromeDriver not responding"
+            kill $CHROMEDRIVER_PID || true
+            exit 1
+          fi
           
           # Install chromedriver with specific version handling
           install_chromedriver() {
