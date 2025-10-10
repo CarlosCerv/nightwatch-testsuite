@@ -26,5 +26,12 @@
     "geckodriver": "^4.5.1",
     "lodash": "^4.17.21",
     "nightwatch": "^2.6.21"
+  },
+  "overrides": {
+    "semver": "^7.5.4",
+    "tough-cookie": "^4.1.3",
+    "json5": "^2.2.3",
+    "qs": "^6.11.2",
+    "follow-redirects": "^1.15.4"
   }
 }

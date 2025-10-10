@@ -134,7 +134,10 @@ jobs:
       - name: Setup Firefox dependencies
         if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
         run: |
-          # Install geckodriver using npm to ensure proper dependency management
+          # First fix npm vulnerabilities
+          npm audit fix --force || true
+          
+          # Install geckodriver using npm
           npm install geckodriver@latest
           
           # Get the installed geckodriver path
@@ -151,12 +154,35 @@ jobs:
           echo "GeckoDriver version information:"
           $GECKODRIVER_PATH --version
           
-          # Test GeckoDriver connection
+          # Test GeckoDriver connection with proper process management
           echo "Testing GeckoDriver connection..."
-          ($GECKODRIVER_PATH --port 4444 &) && sleep 5 && curl -s http://localhost:4444/ && kill %1
+          # Start geckodriver in background and save PID
+          $GECKODRIVER_PATH --port 4444 &
+          GECKO_PID=$!
           
-          # Set environment variables for Nightwatch
-          echo "FIREFOX_BINARY=$(which firefox)" >> $GITHUB_ENV
+          # Wait for server to start
+          sleep 5
+          
+          # Test connection
+          if curl -s http://localhost:4444/ > /dev/null; then
+            echo "GeckoDriver connection successful"
+            kill $GECKO_PID || true
+            wait $GECKO_PID 2>/dev/null || true
+          else
+            echo "Failed to connect to GeckoDriver"
+            kill $GECKO_PID || true
+            wait $GECKO_PID 2>/dev/null || true
+            exit 1
+          fi
+          
+          # Set Firefox binary path
+          FIREFOX_BINARY=$(which firefox)
+          echo "FIREFOX_BINARY=$FIREFOX_BINARY" >> $GITHUB_ENV
+          echo "Using Firefox binary: $FIREFOX_BINARY"
+          
+          # Create required directories
+          mkdir -p tests_output/screenshots
+          mkdir -p tests_output/logs
 
       - name: Run tests (Manual Trigger - Specific Browser)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.browser != ''
