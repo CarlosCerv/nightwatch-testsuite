@@ -84,7 +84,6 @@ module.exports = {
           retry_attempts: 5
         },
         cli_args: [
-          '--enable-automatic-inspection',
           '--diagnose'
         ]
       },
@@ -92,10 +91,14 @@ module.exports = {
         browserName: 'safari',
         platformName: 'macOS',
         'safari:options': {
-          automaticInspection: true,
-          automaticProfiling: true
+          cleanSession: true
         },
         acceptInsecureCerts: true
+      },
+      globals: {
+        waitForConditionTimeout: 15000,
+        retryAssertionTimeout: 5000,
+        throwOnMultipleElementsReturned: false
       }
     },
     

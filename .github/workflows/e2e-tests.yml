@@ -231,14 +231,13 @@ jobs:
           pkill -f safaridriver || true
           sleep 2
           
-          # Configure Safari settings
+          # Enable Safari Developer Menu and configure settings
           defaults write com.apple.Safari IncludeDevelopMenu -bool true
           defaults write com.apple.Safari AllowRemoteAutomation -bool true
           defaults write com.apple.Safari WebKitDeveloperExtrasEnabledPreferenceKey -bool true
           defaults write com.apple.Safari.SandboxBroker StartWhenSDKToolsRequestsAutomation -bool true
           defaults write com.apple.Safari WebKitPreferences.developerExtrasEnabled -bool true
           defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled -bool true
-          defaults write com.apple.Safari AutomaticallyShowToolbarInFullScreen -bool true
           
           # Enable SafariDriver
           sudo safaridriver --enable
@@ -249,28 +248,42 @@ jobs:
           # Set environment variables
           echo "SAFARI_DRIVER_PATH=/usr/bin/safaridriver" >> $GITHUB_ENV
           
-          # Start SafariDriver with debugging
-          echo "Starting SafariDriver with debugging..."
-          /usr/bin/safaridriver --enable-automatic-inspection --diagnose -p 4444 &
+          # Start SafariDriver with diagnostic logging
+          echo "Starting SafariDriver with diagnostic logging..."
+          /usr/bin/safaridriver --diagnose -p 4444 &
           SAFARI_PID=$!
           
           # Wait for initialization
-          sleep 15
+          echo "Waiting for SafariDriver to initialize..."
+          sleep 10
           
-          # Test connection
-          if curl -s http://localhost:4444/status > /dev/null; then
-            echo "SafariDriver is responding on port 4444"
-          else
-            echo "Warning: SafariDriver not responding, checking process..."
-            if pgrep -x "safaridriver" > /dev/null; then
-              echo "SafariDriver process is running, continuing..."
+          # Test connection multiple times
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          SUCCESS=false
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -s http://localhost:4444/status > /dev/null; then
+              echo "SafariDriver is responding on port 4444"
+              SUCCESS=true
+              break
             else
-              echo "Error: SafariDriver process not found"
-              exit 1
+              echo "Attempt $((RETRY_COUNT + 1)): SafariDriver not responding, waiting..."
+              sleep 5
+              RETRY_COUNT=$((RETRY_COUNT + 1))
             fi
-          fi
+          done
           
-          echo "Safari setup completed"
+          if [ "$SUCCESS" = true ]; then
+            echo "SafariDriver setup completed successfully"
+          else
+            echo "Error: SafariDriver failed to respond after $MAX_RETRIES attempts"
+            # Collect diagnostic information
+            ps aux | grep safaridriver
+            echo "SafariDriver logs:"
+            cat tests_output/logs/safaridriver.log 2>/dev/null || true
+            exit 1
+          fi
 
       - name: Run tests (Manual Trigger - Specific Browser)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.browser != ''
