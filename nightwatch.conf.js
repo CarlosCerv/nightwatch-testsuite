@@ -25,8 +25,16 @@ module.exports = {
     chrome: {
       webdriver: {
         start_process: true,
-        server_path: process.env.CHROMEDRIVER_PATH || require('chromedriver').path,
-        port: 9515
+        server_path: process.env.CHROMEDRIVER_PATH || (() => {
+          try {
+            return require('chromedriver').path;
+          } catch (e) {
+            console.error('ChromeDriver not found:', e.message);
+            return null;
+          }
+        })(),
+        port: 9515,
+        cli_args: ['--verbose']
       },
       desiredCapabilities: {
         browserName: 'chrome',
@@ -34,8 +42,11 @@ module.exports = {
           args: [
             '--no-sandbox',
             '--headless',
-            '--disable-gpu'
-          ]
+            '--disable-gpu',
+            '--disable-dev-shm-usage',
+            '--disable-software-rasterizer'
+          ],
+          w3c: true
         }
       }
     },
@@ -59,12 +70,21 @@ module.exports = {
         start_process: true,
         server_path: process.env.GECKODRIVER_PATH || require('geckodriver').path,
         port: 4444,
-        cli_args: ['--log', 'debug']
+        cli_args: [
+          '--log', 'debug'
+        ]
       },
       desiredCapabilities: {
         browserName: 'firefox',
         'moz:firefoxOptions': {
-          args: ['--headless']
+          args: [
+            '--headless',
+            '--no-sandbox',
+            '--disable-gpu'
+          ],
+          prefs: {
+            'javascript.enabled': true
+          }
         }
       }
     }

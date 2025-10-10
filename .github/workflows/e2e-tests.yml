@@ -55,20 +55,21 @@ jobs:
         if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome' || github.event.inputs.browser == 'headless'
         uses: browser-actions/setup-chrome@latest
         with:
-          chrome-version: "140.0"
+          chrome-version: 'stable'
 
       - name: Get Chrome version
         if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome' || github.event.inputs.browser == 'headless'
         id: chrome-version
         run: |
-          CHROME_VERSION=$(google-chrome --version | cut -d ' ' -f 3 | cut -d '.' -f 1)
-          echo "chrome_version=$CHROME_VERSION" >> $GITHUB_OUTPUT
+          chrome_version=$(google-chrome --version | awk '{print $3}' | cut -d'.' -f1)
+          echo "CHROME_VERSION=${chrome_version}" >> $GITHUB_ENV
+          echo "chrome_version=${chrome_version}" >> $GITHUB_OUTPUT
 
       - name: Setup Firefox
         if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
-        uses: browser-actions/setup-firefox@latest
+        uses: browser-actions/setup-firefox@v1
         with:
-          firefox-version: latest
+          firefox-version: 'latest-esr'
 
       - name: Install dependencies
         run: |
@@ -78,16 +79,26 @@ jobs:
       - name: Install Chrome dependencies
         if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome' || github.event.inputs.browser == 'headless'
         run: |
-          CHROME_VERSION="${{ steps.chrome-version.outputs.chrome_version }}"
-          npm install chromedriver@~$CHROME_VERSION.0
-          echo "CHROMEDRIVER_PATH=$(npm bin)/chromedriver" >> $GITHUB_ENV
+          if [ -n "$CHROME_VERSION" ]; then
+            echo "Installing chromedriver for Chrome version $CHROME_VERSION"
+            npm install chromedriver@$CHROME_VERSION
+            CHROMEDRIVER_PATH=$(npm bin)/chromedriver
+            echo "CHROMEDRIVER_PATH=$CHROMEDRIVER_PATH" >> $GITHUB_ENV
+            echo "Installed chromedriver at: $CHROMEDRIVER_PATH"
+          else
+            echo "Error: Chrome version not detected"
+            exit 1
+          fi
 
       - name: Setup Firefox dependencies
         if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
         run: |
-          npm install geckodriver@latest
-          echo "GECKODRIVER_PATH=$(npm bin)/geckodriver" >> $GITHUB_ENV
-          chmod +x $(npm bin)/geckodriver
+          GECKO_VERSION=$(npm info geckodriver version)
+          npm install -g geckodriver@$GECKO_VERSION
+          GECKODRIVER_PATH=$(which geckodriver)
+          echo "GECKODRIVER_PATH=$GECKODRIVER_PATH" >> $GITHUB_ENV
+          chmod +x $GECKODRIVER_PATH
+          echo "Using geckodriver from: $GECKODRIVER_PATH"
 
       - name: Run tests (Manual Trigger - Specific Browser)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.browser != ''
@@ -100,7 +111,17 @@ jobs:
 
       - name: Run tests (Matrix Strategy)
         if: github.event_name != 'workflow_dispatch'
-        run: npm run test:${{ matrix.browser }}
+        run: |
+          if [ "${{ matrix.browser }}" = "chrome" ]; then
+            echo "Running Chrome tests with ChromeDriver version matching Chrome $CHROME_VERSION"
+            echo "ChromeDriver path: $CHROMEDRIVER_PATH"
+            npm run test:chrome
+          elif [ "${{ matrix.browser }}" = "firefox" ]; then
+            echo "Running Firefox tests with GeckoDriver from: $GECKODRIVER_PATH"
+            npm run test:firefox
+          else
+            npm run test:${{ matrix.browser }}
+          fi
 
       - name: Upload Test Results
         if: always()
