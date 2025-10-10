@@ -54,37 +54,79 @@ jobs:
       - name: Setup Chrome and ChromeDriver
         if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome' || github.event.inputs.browser == 'headless'
         run: |
-          # Download and install Chrome for Testing and ChromeDriver
-          CHROME_VERSION="stable"
-          PLATFORM="mac-x64"  # for macOS Intel. Use mac-arm64 for Apple Silicon
+          # Install jq if not available
+          if ! command -v jq &> /dev/null; then
+            brew install jq
+          fi
+
+          # Detect platform architecture
+          if [[ $(uname -m) == "arm64" ]]; then
+            PLATFORM="mac-arm64"
+          else
+            PLATFORM="mac-x64"
+          fi
           
           # Get the latest Chrome for Testing version
           LATEST_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json | jq -r '.channels.Stable.version')
           echo "Latest Chrome for Testing version: $LATEST_VERSION"
           
+          # Create a directory for Chrome and ChromeDriver
+          mkdir -p chrome-testing
+          cd chrome-testing
+          
           # Download Chrome for Testing
-          curl -o chrome-testing.zip "https://edgedl.me.gstatic.com/chrome/mac/universal/stable/GGRO/googlechrome-${LATEST_VERSION}.dmg"
+          echo "Downloading Chrome for Testing..."
+          curl -L -o chrome.zip "https://storage.googleapis.com/chrome-for-testing-public/${LATEST_VERSION}/${PLATFORM}/chrome-${PLATFORM}.zip"
           
           # Download matching ChromeDriver
-          curl -o chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/${LATEST_VERSION}/${PLATFORM}/chromedriver-${PLATFORM}.zip"
+          echo "Downloading ChromeDriver..."
+          curl -L -o chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/${LATEST_VERSION}/${PLATFORM}/chromedriver-${PLATFORM}.zip"
           
-          # Extract ChromeDriver
-          unzip -o chromedriver.zip
+          # Extract Chrome and ChromeDriver
+          echo "Extracting Chrome..."
+          unzip -q chrome.zip || { echo "Failed to extract Chrome"; exit 1; }
+          echo "Extracting ChromeDriver..."
+          unzip -q chromedriver.zip || { echo "Failed to extract ChromeDriver"; exit 1; }
           
-          # Move ChromeDriver to /usr/local/bin and make it executable
-          sudo mv chromedriver-${PLATFORM}/chromedriver /usr/local/bin/
+          # Set up Chrome binary path
+          CHROME_PATH="$(pwd)/chrome-${PLATFORM}/chrome"
+          echo "Chrome binary path: $CHROME_PATH"
+          [ -f "$CHROME_PATH" ] || { echo "Chrome binary not found at $CHROME_PATH"; exit 1; }
+          chmod +x "$CHROME_PATH"
+          echo "CHROME_BINARY_PATH=$CHROME_PATH" >> $GITHUB_ENV
+          
+          # Set up ChromeDriver
+          [ -f "chromedriver-${PLATFORM}/chromedriver" ] || { echo "ChromeDriver not found"; exit 1; }
+          sudo mv "chromedriver-${PLATFORM}/chromedriver" /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
+          sudo xattr -d com.apple.quarantine /usr/local/bin/chromedriver 2>/dev/null || true
           
           # Verify installations
           echo "ChromeDriver version:"
-          chromedriver --version
+          chromedriver --version || { echo "ChromeDriver verification failed"; exit 1; }
           
-          # Set environment variable for Nightwatch
+          # Set environment variables
           echo "CHROMEDRIVER_PATH=/usr/local/bin/chromedriver" >> $GITHUB_ENV
+          echo "CHROME_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
           
-          # Store Chrome version
-          CHROME_MAJOR_VERSION=$(echo "$LATEST_VERSION" | cut -d. -f1)
-          echo "CHROME_VERSION=$CHROME_MAJOR_VERSION" >> $GITHUB_ENV
+          # Test ChromeDriver connection
+          echo "Testing ChromeDriver connection..."
+          chromedriver --port=9515 &
+          CHROMEDRIVER_PID=$!
+          sleep 3
+          
+          if curl -s http://localhost:9515/status > /dev/null; then
+            echo "ChromeDriver is responding on port 9515"
+            kill $CHROMEDRIVER_PID 2>/dev/null || true
+          else
+            echo "Error: ChromeDriver not responding"
+            kill $CHROMEDRIVER_PID 2>/dev/null || true
+            exit 1
+          fi
+          
+          # Clean up
+          cd ..
+          rm -rf chrome-testing
 
       - name: Setup Firefox
         if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
