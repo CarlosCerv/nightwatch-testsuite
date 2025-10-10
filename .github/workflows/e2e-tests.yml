@@ -85,7 +85,7 @@ jobs:
 
       - name: Upload Test Results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.browser }}
           path: |
@@ -93,10 +93,12 @@ jobs:
             tests_output/screenshots/
             tests_output/
           retention-days: 30
+          if-no-files-found: warn
+          compression-level: 6
 
       - name: Upload Test Report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-report-${{ matrix.browser }}
           path: tests_output/nightwatch-html-report/index.html
