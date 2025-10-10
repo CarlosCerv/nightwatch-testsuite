@@ -61,14 +61,18 @@ jobs:
         if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome' || github.event.inputs.browser == 'headless'
         id: chrome-version
         run: |
-          # Install chromium-browser to get google-chrome command
-          if ! command -v google-chrome &> /dev/null; then
-            brew install chromium
+          # On macOS, Chrome is installed by browser-actions/setup-chrome
+          # The binary is located in '/Applications/Google Chrome.app'
+          CHROME_APP="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          
+          if [ ! -f "$CHROME_APP" ]; then
+            echo "Chrome application not found at expected location"
+            exit 1
           fi
           
-          # Get Chrome version and clean it up
-          CHROME_FULL_VERSION=$(google-chrome --version || chromium-browser --version)
-          CHROME_MAJOR_VERSION=$(echo "$CHROME_FULL_VERSION" | sed -n 's/.*Chrome \([0-9]*\).*/\1/p')
+          # Get Chrome version using the actual Chrome binary
+          CHROME_FULL_VERSION=$("$CHROME_APP" --version)
+          CHROME_MAJOR_VERSION=$(echo "$CHROME_FULL_VERSION" | awk '{print $3}' | cut -d. -f1)
           
           # Verify we got a version number
           if [ -z "$CHROME_MAJOR_VERSION" ]; then
@@ -79,6 +83,10 @@ jobs:
           echo "Detected Chrome version: $CHROME_MAJOR_VERSION"
           echo "CHROME_VERSION=$CHROME_MAJOR_VERSION" >> $GITHUB_ENV
           echo "chrome_version=$CHROME_MAJOR_VERSION" >> $GITHUB_OUTPUT
+          
+          # Verify Chrome installation
+          echo "Full Chrome version info:"
+          "$CHROME_APP" --version
 
       - name: Setup Firefox
         if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
@@ -126,30 +134,29 @@ jobs:
       - name: Setup Firefox dependencies
         if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
         run: |
-          # Get Firefox version
-          FIREFOX_VERSION=$(firefox --version | cut -d' ' -f3)
-          echo "Firefox version: $FIREFOX_VERSION"
+          # Install geckodriver using npm to ensure proper dependency management
+          npm install geckodriver@latest
           
-          # Download latest compatible geckodriver
-          GECKO_VERSION=$(curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest | jq -r '.tag_name')
-          echo "Latest GeckoDriver version: $GECKO_VERSION"
-          
-          # Download and extract geckodriver for arm64
-          curl -L "https://github.com/mozilla/geckodriver/releases/download/${GECKO_VERSION}/geckodriver-${GECKO_VERSION}-macos-aarch64.tar.gz" -o geckodriver.tar.gz
-          tar -xzf geckodriver.tar.gz
-          
-          # Make executable and move to a PATH location
-          chmod +x geckodriver
-          sudo mv geckodriver /usr/local/bin/
-          
-          # Verify installation
-          GECKODRIVER_PATH=$(which geckodriver)
+          # Get the installed geckodriver path
+          GECKODRIVER_PATH="$(pwd)/node_modules/.bin/geckodriver"
           echo "GECKODRIVER_PATH=$GECKODRIVER_PATH" >> $GITHUB_ENV
-          echo "Using geckodriver from: $GECKODRIVER_PATH"
-          geckodriver --version
+          
+          # Ensure proper permissions
+          chmod +x "$GECKODRIVER_PATH"
           
           # Create logs directory
           mkdir -p logs
+          
+          # Verify installation and version
+          echo "GeckoDriver version information:"
+          $GECKODRIVER_PATH --version
+          
+          # Test GeckoDriver connection
+          echo "Testing GeckoDriver connection..."
+          ($GECKODRIVER_PATH --port 4444 &) && sleep 5 && curl -s http://localhost:4444/ && kill %1
+          
+          # Set environment variables for Nightwatch
+          echo "FIREFOX_BINARY=$(which firefox)" >> $GITHUB_ENV
 
       - name: Run tests (Manual Trigger - Specific Browser)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.browser != ''

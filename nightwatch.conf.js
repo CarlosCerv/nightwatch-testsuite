@@ -71,29 +71,30 @@ module.exports = {
         server_path: process.env.GECKODRIVER_PATH || require('geckodriver').path,
         port: 4444,
         cli_args: [
-          '--log', 'debug',
-          '--host', 'localhost'
-        ]
+          '--log', 'trace',
+          '--marionette-port', '2828'
+        ],
+        skip_testcases_on_fail: false
       },
       desiredCapabilities: {
         browserName: 'firefox',
         'moz:firefoxOptions': {
-          args: [
-            '--headless',
-            '--no-sandbox',
-            '--disable-gpu',
-            '--window-size=1920,1080'
-          ],
+          args: ['--headless'],
+          binary: process.env.FIREFOX_BINARY,
           prefs: {
-            'browser.download.folderList': 2,
-            'browser.download.manager.showWhenStarting': false,
-            'browser.download.dir': '/tmp',
-            'browser.helperApps.neverAsk.saveToDisk': 'application/octet-stream'
+            'browser.startup.homepage': 'about:blank',
+            'browser.startup.page': 0,
+            'browser.startup.homepage_override.mstone': 'ignore'
           },
           log: { level: 'trace' }
         },
         acceptInsecureCerts: true,
-        timeouts: { implicit: 5000, pageLoad: 10000, script: 10000 }
+        marionette: true
+      },
+      globals: {
+        waitForConditionTimeout: 10000,
+        retryAssertionTimeout: 5000,
+        throwOnMultipleElementsReturned: false
       }
     }
   }
