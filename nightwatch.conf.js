@@ -71,7 +71,8 @@ module.exports = {
         server_path: process.env.GECKODRIVER_PATH || require('geckodriver').path,
         port: 4444,
         cli_args: [
-          '--log', 'debug'
+          '--log', 'debug',
+          '--host', 'localhost'
         ]
       },
       desiredCapabilities: {
@@ -80,12 +81,19 @@ module.exports = {
           args: [
             '--headless',
             '--no-sandbox',
-            '--disable-gpu'
+            '--disable-gpu',
+            '--window-size=1920,1080'
           ],
           prefs: {
-            'javascript.enabled': true
-          }
-        }
+            'browser.download.folderList': 2,
+            'browser.download.manager.showWhenStarting': false,
+            'browser.download.dir': '/tmp',
+            'browser.helperApps.neverAsk.saveToDisk': 'application/octet-stream'
+          },
+          log: { level: 'trace' }
+        },
+        acceptInsecureCerts: true,
+        timeouts: { implicit: 5000, pageLoad: 10000, script: 10000 }
       }
     }
   }
