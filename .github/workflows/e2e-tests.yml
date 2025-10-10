@@ -5,7 +5,6 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-  # Allow manual trigger
   workflow_dispatch:
     inputs:
       browser:
@@ -13,33 +12,28 @@ on:
         required: true
         default: 'chrome'
         type: choice
-        options:
-          - chrome
-          - firefox
-          - headless
+        options: [chrome, firefox, safari]
       test_suite:
         description: 'Test suite to run'
         required: false
         default: 'all'
         type: string
 
-# Environment variables
 env:
   NODE_VERSION: '20.x'
   BASE_URL: ${{ secrets.BASE_URL }}
   WAIT_TIMEOUT: 10000
   RETRY_TIMEOUT: 5000
-  PARALLEL: true
 
 jobs:
   test:
     name: E2E Tests
-    runs-on: macos-latest  # Changed to macOS for Safari support
+    runs-on: macos-latest
     
     strategy:
       matrix:
         browser: [chrome, firefox, safari]
-      fail-fast: false # Continue with other browsers if one fails
+      fail-fast: false
     
     steps:
       - name: Checkout repository
@@ -51,82 +45,38 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Setup Chrome and ChromeDriver
-        if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome' || github.event.inputs.browser == 'headless'
+      - name: Setup Chrome
+        if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome'
         run: |
-          # Install jq if not available
-          if ! command -v jq &> /dev/null; then
-            brew install jq
-          fi
-
-          # Detect platform architecture
-          if [[ $(uname -m) == "arm64" ]]; then
-            PLATFORM="mac-arm64"
-          else
-            PLATFORM="mac-x64"
-          fi
+          PLATFORM="mac-$(uname -m | sed 's/x86_64/x64/;s/arm64/arm64/')"
+          VERSION="114.0.5735.90"
+          TEMP_DIR=$(mktemp -d)
+          cd "$TEMP_DIR"
           
-          # Get the latest Chrome for Testing version
-          LATEST_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json | jq -r '.channels.Stable.version')
-          echo "Latest Chrome for Testing version: $LATEST_VERSION"
+          echo "Setting up Chrome and ChromeDriver..."
+          curl -LO "https://storage.googleapis.com/chrome-for-testing-public/$VERSION/$PLATFORM/chrome-$PLATFORM.zip"
+          curl -LO "https://storage.googleapis.com/chrome-for-testing-public/$VERSION/$PLATFORM/chromedriver-$PLATFORM.zip"
           
-          # Create a directory for Chrome and ChromeDriver
-          mkdir -p chrome-testing
-          cd chrome-testing
+          unzip -q "chrome-$PLATFORM.zip"
+          unzip -q "chromedriver-$PLATFORM.zip"
           
-          # Download Chrome for Testing
-          echo "Downloading Chrome for Testing..."
-          curl -L -o chrome.zip "https://storage.googleapis.com/chrome-for-testing-public/${LATEST_VERSION}/${PLATFORM}/chrome-${PLATFORM}.zip"
-          
-          # Download matching ChromeDriver
-          echo "Downloading ChromeDriver..."
-          curl -L -o chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/${LATEST_VERSION}/${PLATFORM}/chromedriver-${PLATFORM}.zip"
-          
-          # Extract Chrome and ChromeDriver
-          echo "Extracting Chrome..."
-          unzip -q chrome.zip || { echo "Failed to extract Chrome"; exit 1; }
-          echo "Extracting ChromeDriver..."
-          unzip -q chromedriver.zip || { echo "Failed to extract ChromeDriver"; exit 1; }
-          
-          # Set up Chrome binary path
-          CHROME_PATH="$(pwd)/chrome-${PLATFORM}/chrome"
-          echo "Chrome binary path: $CHROME_PATH"
-          [ -f "$CHROME_PATH" ] || { echo "Chrome binary not found at $CHROME_PATH"; exit 1; }
+          CHROME_PATH="$TEMP_DIR/chrome-$PLATFORM/chrome"
           chmod +x "$CHROME_PATH"
-          echo "CHROME_BINARY_PATH=$CHROME_PATH" >> $GITHUB_ENV
           
-          # Set up ChromeDriver
-          [ -f "chromedriver-${PLATFORM}/chromedriver" ] || { echo "ChromeDriver not found"; exit 1; }
-          sudo mv "chromedriver-${PLATFORM}/chromedriver" /usr/local/bin/
+          sudo mv "chromedriver-$PLATFORM/chromedriver" /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
           sudo xattr -d com.apple.quarantine /usr/local/bin/chromedriver 2>/dev/null || true
           
-          # Verify installations
-          echo "ChromeDriver version:"
-          chromedriver --version || { echo "ChromeDriver verification failed"; exit 1; }
-          
-          # Set environment variables
+          echo "CHROME_BINARY_PATH=$CHROME_PATH" >> $GITHUB_ENV
           echo "CHROMEDRIVER_PATH=/usr/local/bin/chromedriver" >> $GITHUB_ENV
-          echo "CHROME_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
           
-          # Test ChromeDriver connection
-          echo "Testing ChromeDriver connection..."
           chromedriver --port=9515 &
-          CHROMEDRIVER_PID=$!
-          sleep 3
-          
-          if curl -s http://localhost:9515/status > /dev/null; then
-            echo "ChromeDriver is responding on port 9515"
-            kill $CHROMEDRIVER_PID 2>/dev/null || true
-          else
-            echo "Error: ChromeDriver not responding"
-            kill $CHROMEDRIVER_PID 2>/dev/null || true
+          sleep 2
+          if ! curl -s http://localhost:9515/status > /dev/null; then
+            pkill -f chromedriver
             exit 1
           fi
-          
-          # Clean up
-          cd ..
-          rm -rf chrome-testing
+          pkill -f chromedriver
 
       - name: Setup Firefox
         if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
@@ -150,54 +100,7 @@ jobs:
           echo "Installed package versions:"
           npm list --depth=0
 
-      - name: Install Chrome dependencies
-        if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome' || github.event.inputs.browser == 'headless'
-        run: |
-          echo "Installing dependencies for Chrome version $CHROME_VERSION"
-          
-          # Clean up any existing ChromeDriver installations
-          rm -f $(which chromedriver) || true
-          rm -rf node_modules/chromedriver
-          
-          # Download ChromeDriver directly from Google's Chrome for Testing
-          CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}.0.7339.207/mac-arm64/chromedriver-mac-arm64.zip"
-          echo "Downloading ChromeDriver from: $CHROMEDRIVER_URL"
-          
-          # Create directories
-          mkdir -p ./chromedriver
-          
-          # Download and extract ChromeDriver
-          curl -L "$CHROMEDRIVER_URL" -o ./chromedriver/chromedriver.zip
-          unzip ./chromedriver/chromedriver.zip -d ./chromedriver
-          
-          # Move ChromeDriver to the correct location
-          sudo mkdir -p /usr/local/bin
-          sudo mv ./chromedriver/chromedriver-mac-arm64/chromedriver /usr/local/bin/
-          
-          # Set permissions
-          sudo xattr -d com.apple.quarantine /usr/local/bin/chromedriver || true
-          sudo chmod +x /usr/local/bin/chromedriver
-          
-          # Set environment variable
-          echo "CHROMEDRIVER_PATH=/usr/local/bin/chromedriver" >> $GITHUB_ENV
-          
-          # Verify installation
-          echo "Testing ChromeDriver..."
-          /usr/local/bin/chromedriver --version
-          
-          # Test ChromeDriver connection
-          echo "Testing ChromeDriver connection..."
-          /usr/local/bin/chromedriver --port=9515 &
-          CHROMEDRIVER_PID=$!
-          
-          # Wait for ChromeDriver to start
-          sleep 5
-          
-          # Test connection
-          if curl -s http://localhost:9515/status > /dev/null; then
-            echo "ChromeDriver is responding on port 9515"
-            kill $CHROMEDRIVER_PID || true
-            wait $CHROMEDRIVER_PID 2>/dev/null || true
+      # Chrome setup is now handled in the Setup Chrome and ChromeDriver step
           else
             echo "Error: ChromeDriver not responding"
             kill $CHROMEDRIVER_PID || true
@@ -249,157 +152,37 @@ jobs:
           echo "Error: All ChromeDriver installation attempts failed"
           exit 1
 
-      - name: Setup Firefox dependencies
+      - name: Setup Firefox
         if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
-        run: |
-          # First fix npm vulnerabilities
-          npm audit fix --force || true
-          
-          # Install geckodriver using npm
-          npm install geckodriver@latest
-          
-          # Get the installed geckodriver path
-          GECKODRIVER_PATH="$(pwd)/node_modules/.bin/geckodriver"
-          echo "GECKODRIVER_PATH=$GECKODRIVER_PATH" >> $GITHUB_ENV
-          
-          # Ensure proper permissions
-          chmod +x "$GECKODRIVER_PATH"
-          
-          # Create logs directory
-          mkdir -p logs
-          
-          # Verify installation and version
-          echo "GeckoDriver version information:"
-          $GECKODRIVER_PATH --version
-          
-          # Test GeckoDriver connection with proper process management
-          echo "Testing GeckoDriver connection..."
-          # Start geckodriver in background and save PID
-          $GECKODRIVER_PATH --port 4444 &
-          GECKO_PID=$!
-          
-          # Wait for server to start
-          sleep 5
-          
-          # Test connection
-          if curl -s http://localhost:4444/ > /dev/null; then
-            echo "GeckoDriver connection successful"
-            kill $GECKO_PID || true
-            wait $GECKO_PID 2>/dev/null || true
-          else
-            echo "Failed to connect to GeckoDriver"
-            kill $GECKO_PID || true
-            wait $GECKO_PID 2>/dev/null || true
-            exit 1
-          fi
-          
-          # Set Firefox binary path
-          FIREFOX_BINARY=$(which firefox)
-          echo "FIREFOX_BINARY=$FIREFOX_BINARY" >> $GITHUB_ENV
-          echo "Using Firefox binary: $FIREFOX_BINARY"
-          
-          # Create required directories
-          mkdir -p tests_output/screenshots
-          mkdir -p tests_output/logs
+        uses: browser-actions/setup-firefox@v1
+        with:
+          firefox-version: 'latest-esr'
 
       - name: Setup Safari
         if: matrix.browser == 'safari' || github.event.inputs.browser == 'safari'
         run: |
-          # Kill any existing safaridriver processes
-          pkill -f safaridriver || true
-          sleep 2
-          
-          # Enable Safari Developer Menu and configure settings
-          defaults write com.apple.Safari IncludeDevelopMenu -bool true
           defaults write com.apple.Safari AllowRemoteAutomation -bool true
-          defaults write com.apple.Safari WebKitDeveloperExtrasEnabledPreferenceKey -bool true
           defaults write com.apple.Safari.SandboxBroker StartWhenSDKToolsRequestsAutomation -bool true
-          defaults write com.apple.Safari WebKitPreferences.developerExtrasEnabled -bool true
-          defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled -bool true
-          
-          # Enable SafariDriver
           sudo safaridriver --enable
-          
-          # Create required directories
-          mkdir -p tests_output/screenshots tests_output/logs
-          
-          # Set environment variables
           echo "SAFARI_DRIVER_PATH=/usr/bin/safaridriver" >> $GITHUB_ENV
-          
-          # Start SafariDriver with diagnostic logging
-          echo "Starting SafariDriver with diagnostic logging..."
-          /usr/bin/safaridriver --diagnose -p 4444 &
-          SAFARI_PID=$!
-          
-          # Wait for initialization
-          echo "Waiting for SafariDriver to initialize..."
-          sleep 10
-          
-          # Test connection multiple times
-          MAX_RETRIES=3
-          RETRY_COUNT=0
-          SUCCESS=false
-          
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if curl -s http://localhost:4444/status > /dev/null; then
-              echo "SafariDriver is responding on port 4444"
-              SUCCESS=true
-              break
-            else
-              echo "Attempt $((RETRY_COUNT + 1)): SafariDriver not responding, waiting..."
-              sleep 5
-              RETRY_COUNT=$((RETRY_COUNT + 1))
-            fi
-          done
-          
-          if [ "$SUCCESS" = true ]; then
-            echo "SafariDriver setup completed successfully"
-          else
-            echo "Error: SafariDriver failed to respond after $MAX_RETRIES attempts"
-            # Collect diagnostic information
-            ps aux | grep safaridriver
-            echo "SafariDriver logs:"
-            cat tests_output/logs/safaridriver.log 2>/dev/null || true
-            exit 1
-          fi
 
-      - name: Run tests (Manual Trigger - Specific Browser)
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.browser != ''
+      - name: Install dependencies
         run: |
-          if [ "${{ github.event.inputs.test_suite }}" = "all" ]; then
-            npm run test:${{ github.event.inputs.browser }}
-          else
-            npm run test:single ${{ github.event.inputs.test_suite }} --env ${{ github.event.inputs.browser }}
-          fi
+          npm ci
+          npm install selenium-webdriver@latest
 
-      - name: Verify Chrome setup
-        if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome'
+      - name: Run tests
         run: |
-          echo "Chrome version: $CHROME_VERSION"
-          echo "ChromeDriver path: $CHROMEDRIVER_PATH"
-          if [ -x "$CHROMEDRIVER_PATH" ]; then
-            echo "ChromeDriver version info:"
-            "$CHROMEDRIVER_PATH" --version
+          BROWSER="${{ github.event.inputs.browser || matrix.browser }}"
+          TEST_SUITE="${{ github.event.inputs.test_suite }}"
+          
+          if [ "$TEST_SUITE" = "all" ] || [ -z "$TEST_SUITE" ]; then
+            npm run "test:$BROWSER"
           else
-            echo "Error: ChromeDriver is not executable"
-            exit 1
+            npm run test:single "$TEST_SUITE" --env "$BROWSER"
           fi
 
-      - name: Run tests (Matrix Strategy)
-        if: github.event_name != 'workflow_dispatch'
-        run: |
-          if [ "${{ matrix.browser }}" = "chrome" ]; then
-            echo "Running Chrome tests with ChromeDriver version matching Chrome $CHROME_VERSION"
-            echo "ChromeDriver path: $CHROMEDRIVER_PATH"
-            npm run test:chrome
-          elif [ "${{ matrix.browser }}" = "firefox" ]; then
-            echo "Running Firefox tests with GeckoDriver from: $GECKODRIVER_PATH"
-            npm run test:firefox
-          else
-            npm run test:${{ matrix.browser }}
-          fi
-
-      - name: Upload Test Results
+      - name: Upload test artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -407,16 +190,15 @@ jobs:
           path: |
             tests_output/nightwatch-html-report/
             tests_output/screenshots/
-            tests_output/
+            tests_output/*.{xml,json}
           retention-days: 30
           if-no-files-found: warn
-          compression-level: 6
 
-      - name: Upload Test Report
+      - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-report-${{ matrix.browser }}
+          name: html-report-${{ matrix.browser }}
           path: tests_output/nightwatch-html-report/index.html
           retention-days: 30
 
