@@ -48,17 +48,18 @@ jobs:
       - name: Setup Chrome
         if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome'
         run: |
+          # Set up Chrome for Testing with a stable version
           PLATFORM="mac-$(uname -m | sed 's/x86_64/x64/;s/arm64/arm64/')"
           VERSION="114.0.5735.90"
           TEMP_DIR=$(mktemp -d)
           cd "$TEMP_DIR"
           
           echo "Setting up Chrome and ChromeDriver..."
-          curl -LO "https://storage.googleapis.com/chrome-for-testing-public/$VERSION/$PLATFORM/chrome-$PLATFORM.zip"
-          curl -LO "https://storage.googleapis.com/chrome-for-testing-public/$VERSION/$PLATFORM/chromedriver-$PLATFORM.zip"
+          curl -Lo chrome.zip "https://storage.googleapis.com/chrome-for-testing-public/$VERSION/$PLATFORM/chrome-$PLATFORM.zip"
+          curl -Lo chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/$VERSION/$PLATFORM/chromedriver-$PLATFORM.zip"
           
-          unzip -q "chrome-$PLATFORM.zip"
-          unzip -q "chromedriver-$PLATFORM.zip"
+          unzip -q chrome.zip
+          unzip -q chromedriver.zip
           
           CHROME_PATH="$TEMP_DIR/chrome-$PLATFORM/chrome"
           chmod +x "$CHROME_PATH"
@@ -70,87 +71,17 @@ jobs:
           echo "CHROME_BINARY_PATH=$CHROME_PATH" >> $GITHUB_ENV
           echo "CHROMEDRIVER_PATH=/usr/local/bin/chromedriver" >> $GITHUB_ENV
           
+          # Test ChromeDriver
           chromedriver --port=9515 &
           sleep 2
-          if ! curl -s http://localhost:9515/status > /dev/null; then
+          if curl -s http://localhost:9515/status > /dev/null; then
+            echo "✓ ChromeDriver is working"
+            pkill -f chromedriver
+          else
+            echo "✗ ChromeDriver failed to start"
             pkill -f chromedriver
             exit 1
           fi
-          pkill -f chromedriver
-
-      - name: Setup Firefox
-        if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
-        uses: browser-actions/setup-firefox@v1
-        with:
-          firefox-version: 'latest-esr'
-
-      - name: Install dependencies
-        run: |
-          # Remove existing lock file and node_modules to ensure clean state
-          rm -f package-lock.json
-          rm -rf node_modules
-          
-          # Install dependencies and generate new lock file
-          npm install
-          
-          # Install additional dependencies
-          npm install selenium-webdriver@latest
-          
-          # Show installed versions for debugging
-          echo "Installed package versions:"
-          npm list --depth=0
-
-      # Chrome setup is now handled in the Setup Chrome and ChromeDriver step
-          else
-            echo "Error: ChromeDriver not responding"
-            kill $CHROMEDRIVER_PID || true
-            wait $CHROMEDRIVER_PID 2>/dev/null || true
-            exit 1
-          fi
-          
-          # Cleanup
-          rm -rf ./chromedriver
-          
-          # Install chromedriver with specific version handling
-          install_chromedriver() {
-            VERSION=$1
-            echo "Attempting to install ChromeDriver version $VERSION..."
-            npm install chromedriver@$VERSION --save-dev --no-audit
-            return $?
-          }
-          
-          # Try known stable versions that work with newer Chrome
-          STABLE_VERSIONS=("119.0.0" "118.0.0" "117.0.0" "116.0.0" "115.0.0")
-          
-          # Try each stable version
-          for VERSION in "${STABLE_VERSIONS[@]}"; do
-            echo "Trying ChromeDriver version $VERSION..."
-            if install_chromedriver $VERSION && verify_chromedriver; then
-              echo "Successfully installed ChromeDriver $VERSION"
-              exit 0
-            fi
-          done
-          
-          # If all stable versions fail, try latest
-          echo "Trying latest version..."
-          if npm install chromedriver@latest --save-dev --no-audit && verify_chromedriver; then
-            echo "Successfully installed latest ChromeDriver"
-            exit 0
-          fi
-          
-          # If all attempts fail, try installing with Homebrew as fallback
-          echo "Attempting Homebrew installation as fallback..."
-          brew install --cask chromedriver
-          if [ -f "/usr/local/bin/chromedriver" ]; then
-            echo "CHROMEDRIVER_PATH=/usr/local/bin/chromedriver" >> $GITHUB_ENV
-            chmod +x /usr/local/bin/chromedriver
-            echo "Testing ChromeDriver from Homebrew..."
-            /usr/local/bin/chromedriver --version
-            exit 0
-          fi
-          
-          echo "Error: All ChromeDriver installation attempts failed"
-          exit 1
 
       - name: Setup Firefox
         if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
@@ -170,6 +101,9 @@ jobs:
         run: |
           npm ci
           npm install selenium-webdriver@latest
+
+      - name: Create output directories
+        run: mkdir -p tests_output/{screenshots,logs}
 
       - name: Run tests
         run: |
@@ -208,10 +142,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack
+        if: env.SLACK_WEBHOOK_URL != ''
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ needs.test.result }}
           fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        if: env.SLACK_WEBHOOK_URL != ''
