@@ -99,8 +99,26 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm ci
-          npm install selenium-webdriver@latest
+          # Remove existing lock files and node_modules
+          rm -f package-lock.json
+          rm -rf node_modules
+          
+          # Clean install dependencies
+          npm install
+          
+          # Display installed versions for debugging
+          echo "Installed package versions:"
+          npm list --depth=0
+          
+          # Verify critical dependencies
+          echo "Verifying Nightwatch installation..."
+          npx nightwatch --version
+          
+          echo "Verifying ChromeDriver..."
+          npx chromedriver --version
+          
+          echo "Verifying GeckoDriver..."
+          npx geckodriver --version
 
       - name: Create output directories
         run: mkdir -p tests_output/{screenshots,logs}
