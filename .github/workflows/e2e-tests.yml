@@ -115,7 +115,10 @@ jobs:
         run: |
           echo "Installing dependencies for Chrome version $CHROME_VERSION"
           
-          # Function to verify ChromeDriver installation
+          # First fix any npm vulnerabilities
+          npm audit fix --force || true
+          
+          # Function to verify ChromeDriver
           verify_chromedriver() {
             if [ -f "$(npm bin)/chromedriver" ]; then
               CHROMEDRIVER_PATH=$(npm bin)/chromedriver
@@ -128,43 +131,41 @@ jobs:
             return 1
           }
           
-          # Function to get latest compatible version
-          get_compatible_version() {
-            local chrome_ver=$1
-            # Try a range of versions, starting from current and going down
-            for try_version in $(seq $chrome_ver -1 $(($chrome_ver - 5))); do
-              echo "Trying ChromeDriver version $try_version..."
-              if npm view chromedriver@$try_version version &> /dev/null; then
-                echo "Found compatible version $try_version"
-                echo "$try_version"
-                return 0
-              fi
-            done
-            return 1
+          # Install chromedriver with specific version handling
+          install_chromedriver() {
+            VERSION=$1
+            echo "Attempting to install ChromeDriver version $VERSION..."
+            npm install chromedriver@$VERSION --save-dev --no-audit
+            return $?
           }
           
-          # First fix any npm vulnerabilities
-          npm audit fix --force || true
+          # Try known stable versions that work with newer Chrome
+          STABLE_VERSIONS=("119.0.0" "118.0.0" "117.0.0" "116.0.0" "115.0.0")
           
-          # Try exact version match
-          if npm install chromedriver@$CHROME_VERSION --save-dev && verify_chromedriver; then
-            echo "Successfully installed ChromeDriver $CHROME_VERSION"
+          # Try each stable version
+          for VERSION in "${STABLE_VERSIONS[@]}"; do
+            echo "Trying ChromeDriver version $VERSION..."
+            if install_chromedriver $VERSION && verify_chromedriver; then
+              echo "Successfully installed ChromeDriver $VERSION"
+              exit 0
+            fi
+          done
+          
+          # If all stable versions fail, try latest
+          echo "Trying latest version..."
+          if npm install chromedriver@latest --save-dev --no-audit && verify_chromedriver; then
+            echo "Successfully installed latest ChromeDriver"
             exit 0
           fi
           
-          # Try to find compatible version
-          COMPATIBLE_VERSION=$(get_compatible_version $CHROME_VERSION)
-          if [ -n "$COMPATIBLE_VERSION" ]; then
-            if npm install chromedriver@$COMPATIBLE_VERSION --save-dev && verify_chromedriver; then
-              echo "Successfully installed ChromeDriver $COMPATIBLE_VERSION"
-              exit 0
-            fi
-          fi
-          
-          # Try latest stable version as last resort
-          echo "Attempting to install latest stable ChromeDriver..."
-          if npm install chromedriver@latest --save-dev && verify_chromedriver; then
-            echo "Successfully installed latest stable ChromeDriver"
+          # If all attempts fail, try installing with Homebrew as fallback
+          echo "Attempting Homebrew installation as fallback..."
+          brew install --cask chromedriver
+          if [ -f "/usr/local/bin/chromedriver" ]; then
+            echo "CHROMEDRIVER_PATH=/usr/local/bin/chromedriver" >> $GITHUB_ENV
+            chmod +x /usr/local/bin/chromedriver
+            echo "Testing ChromeDriver from Homebrew..."
+            /usr/local/bin/chromedriver --version
             exit 0
           fi
           
