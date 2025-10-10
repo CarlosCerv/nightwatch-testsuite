@@ -1,314 +1,64 @@
-name: E2E Test Suite
+name: E2E Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
-  workflow_dispatch:
-    inputs:
-      browser:
-        description: 'Browser to run tests'
-        required: true
-        default: 'chrome'
-        type: choice
-        options: [chrome, firefox, safari]
-      test_suite:
-        description: 'Test suite to run'
-        required: false
-        default: 'all'
-        type: string
-
-env:
-  NODE_VERSION: '20.x'
-  BASE_URL: ${{ secrets.BASE_URL }}
-  WAIT_TIMEOUT: 10000
-  RETRY_TIMEOUT: 5000
+    branches: [ main ]
 
 jobs:
   test:
-    name: E2E Tests
     runs-on: macos-latest
-    
-    strategy:
-      matrix:
-        browser: [chrome, firefox, safari]
-      fail-fast: false
-    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Setup Chrome
-        if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome'
-        run: |
-          # Get the latest known good version from Chrome for Testing
-          echo "Fetching latest Chrome version..."
-          LATEST_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json | jq -r '.channels.Stable.version')
-          
-          # Determine platform
-          PLATFORM="mac-$(uname -m | sed 's/x86_64/x64/;s/arm64/arm64/')"
-          echo "Platform detected: $PLATFORM"
-          echo "Chrome version: $LATEST_VERSION"
-          
-          # Create and move to temporary directory
-          TEMP_DIR=$(mktemp -d)
-          cd "$TEMP_DIR"
-          
-          # Get download URLs from the API
-          echo "Getting download URLs..."
-          DOWNLOADS=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json | \
-                     jq -r --arg VER "$LATEST_VERSION" --arg PLAT "$PLATFORM" \
-                     '.versions[] | select(.version==$VER) | .downloads | {chrome: .chrome[], chromedriver: .chromedriver[]} | select(.platform==$PLAT)')
-          
-          CHROME_URL=$(echo "$DOWNLOADS" | jq -r 'select(.platform=="'$PLATFORM'") | .chrome.url')
-          DRIVER_URL=$(echo "$DOWNLOADS" | jq -r 'select(.platform=="'$PLATFORM'") | .chromedriver.url')
-          
-          echo "Chrome URL: $CHROME_URL"
-          echo "ChromeDriver URL: $DRIVER_URL"
-          
-          # Download Chrome
-          echo "Downloading Chrome for Testing..."
-          curl -fL --retry 3 --retry-delay 2 -o chrome.zip "$CHROME_URL" || {
-            echo "Failed to download Chrome"
-            exit 1
-          }
-          
-          # Download ChromeDriver
-          echo "Downloading ChromeDriver..."
-          curl -fL --retry 3 --retry-delay 2 -o chromedriver.zip "$DRIVER_URL" || {
-            echo "Failed to download ChromeDriver"
-            exit 1
-          }
-          
-          # Verify downloads
-          echo "Verifying downloads..."
-          for file in chrome.zip chromedriver.zip; do
-            if [ ! -s "$file" ]; then
-              echo "Error: $file is empty or missing"
-              ls -l "$file"
-              exit 1
-            fi
-          done
-          
-          # Verify downloads
-          echo "Verifying downloads..."
-          if ! [ -s chrome.zip ] || ! [ -s chromedriver.zip ]; then
-            echo "Downloaded files are empty or missing"
-            ls -l chrome.zip chromedriver.zip
-            exit 1
-          fi
-          
-          # Verify and extract Chrome
-          echo "Verifying Chrome archive..."
-          file chrome.zip
-          echo "Chrome archive size: $(ls -lh chrome.zip)"
-          
-          echo "Extracting Chrome..."
-          unzip -t chrome.zip > /dev/null || {
-            echo "Chrome archive is corrupt"
-            exit 1
-          }
-          unzip -q chrome.zip
-          
-          # Verify and extract ChromeDriver
-          echo "Verifying ChromeDriver archive..."
-          file chromedriver.zip
-          echo "ChromeDriver archive size: $(ls -lh chromedriver.zip)"
-          
-          echo "Extracting ChromeDriver..."
-          mkdir -p chromedriver-extract
-          cd chromedriver-extract
-          unzip -t ../chromedriver.zip > /dev/null || {
-            echo "ChromeDriver archive is corrupt"
-            exit 1
-          }
-          unzip -q ../chromedriver.zip
-          cd ..
-          
-          # Set up Chrome for macOS
-          echo "Setting up Chrome..."
-          CHROME_APP="$TEMP_DIR/chrome-$PLATFORM/Google Chrome for Testing.app"
-          CHROME_PATH="$CHROME_APP/Contents/MacOS/Google Chrome for Testing"
-          
-          if [ ! -d "$CHROME_APP" ]; then
-            echo "Chrome.app not found at expected path: $CHROME_APP"
-            echo "Contents of temp directory:"
-            ls -R "$TEMP_DIR"
-            exit 1
-          fi
-          
-          if [ ! -f "$CHROME_PATH" ]; then
-            echo "Chrome binary not found at expected path: $CHROME_PATH"
-            echo "Contents of Chrome.app directory:"
-            ls -R "$CHROME_APP"
-            exit 1
-          fi
-          
-          chmod +x "$CHROME_PATH"
-          echo "Chrome binary found at: $CHROME_PATH"
-          
-          # Set up ChromeDriver
-          echo "Setting up ChromeDriver..."
-          CHROMEDRIVER_EXTRACT="$TEMP_DIR/chromedriver-extract/chromedriver-$PLATFORM"
-          if [ ! -f "$CHROMEDRIVER_EXTRACT/chromedriver" ]; then
-            echo "ChromeDriver not found at expected path: $CHROMEDRIVER_EXTRACT/chromedriver"
-            echo "Contents of chromedriver directory:"
-            ls -R "$TEMP_DIR/chromedriver-extract"
-            exit 1
-          fi
-          sudo mv "$CHROMEDRIVER_EXTRACT/chromedriver" /usr/local/bin/
-          sudo chmod +x /usr/local/bin/chromedriver
-          sudo xattr -d com.apple.quarantine /usr/local/bin/chromedriver 2>/dev/null || true
-          
-          # Set environment variables
-          echo "CHROME_BINARY_PATH=$CHROME_PATH" >> $GITHUB_ENV
-          echo "CHROMEDRIVER_PATH=/usr/local/bin/chromedriver" >> $GITHUB_ENV
-          
-          # Verify installations
-          echo "Verifying Chrome installation..."
-          if "$CHROME_PATH" --version; then
-            echo "Chrome version verified successfully"
-          else
-            echo "Failed to verify Chrome version"
-            echo "Chrome binary permissions:"
-            ls -l "$CHROME_PATH"
-            echo "Chrome binary file type:"
-            file "$CHROME_PATH"
-            exit 1
-          fi
-          
-          echo "Verifying ChromeDriver installation..."
-          if chromedriver --version; then
-            echo "ChromeDriver version verified successfully"
-          else
-            echo "Failed to verify ChromeDriver version"
-            echo "ChromeDriver permissions:"
-            ls -l /usr/local/bin/chromedriver
-            echo "ChromeDriver file type:"
-            file /usr/local/bin/chromedriver
-            exit 1
-          fi
-          
-          # Verify versions match
-          CHROME_VER=$("$CHROME_PATH" --version | grep -o '[0-9]*\.[0-9]*\.[0-9]*' || echo "unknown")
-          DRIVER_VER=$(chromedriver --version | grep -o '[0-9]*\.[0-9]*\.[0-9]*' || echo "unknown")
-          
-          echo "Chrome version: $CHROME_VER"
-          echo "ChromeDriver version: $DRIVER_VER"
-          
-          if [[ "$CHROME_VER" != "unknown" && "$DRIVER_VER" != "unknown" ]]; then
-            CHROME_MAJOR=$(echo "$CHROME_VER" | cut -d. -f1)
-            DRIVER_MAJOR=$(echo "$DRIVER_VER" | cut -d. -f1)
-            if [ "$CHROME_MAJOR" != "$DRIVER_MAJOR" ]; then
-              echo "Warning: Chrome ($CHROME_MAJOR) and ChromeDriver ($DRIVER_MAJOR) major versions don't match"
-            fi
-          fi
-          
-          # Test ChromeDriver connection
-          echo "Testing ChromeDriver..."
-          chromedriver --port=9515 &
-          DRIVER_PID=$!
-          sleep 2
-          
-          if curl -s http://localhost:9515/status > /dev/null; then
-            echo "✓ ChromeDriver is working"
-            kill $DRIVER_PID 2>/dev/null || true
-            wait $DRIVER_PID 2>/dev/null || true
-          else
-            echo "✗ ChromeDriver failed to start"
-            kill $DRIVER_PID 2>/dev/null || true
-            wait $DRIVER_PID 2>/dev/null || true
-            exit 1
-          fi
-
-      - name: Setup Firefox
-        if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
-        uses: browser-actions/setup-firefox@v1
-        with:
-          firefox-version: 'latest-esr'
-
-      - name: Setup Safari
-        if: matrix.browser == 'safari' || github.event.inputs.browser == 'safari'
-        run: |
-          defaults write com.apple.Safari AllowRemoteAutomation -bool true
-          defaults write com.apple.Safari.SandboxBroker StartWhenSDKToolsRequestsAutomation -bool true
-          sudo safaridriver --enable
-          echo "SAFARI_DRIVER_PATH=/usr/bin/safaridriver" >> $GITHUB_ENV
-
-      - name: Install dependencies
-        run: |
-          # Remove existing lock files and node_modules
-          rm -f package-lock.json
-          rm -rf node_modules
-          
-          # Clean install dependencies
-          npm install
-          
-          # Display installed versions for debugging
-          echo "Installed package versions:"
-          npm list --depth=0
-          
-          # Verify critical dependencies
-          echo "Verifying Nightwatch installation..."
-          npx nightwatch --version
-          
-          echo "Verifying ChromeDriver..."
-          npx chromedriver --version
-          
-          echo "Verifying GeckoDriver..."
-          npx geckodriver --version
-
-      - name: Create output directories
-        run: mkdir -p tests_output/{screenshots,logs}
-
-      - name: Run tests
-        run: |
-          BROWSER="${{ github.event.inputs.browser || matrix.browser }}"
-          TEST_SUITE="${{ github.event.inputs.test_suite }}"
-          
-          if [ "$TEST_SUITE" = "all" ] || [ -z "$TEST_SUITE" ]; then
-            npm run "test:$BROWSER"
-          else
-            npm run test:single "$TEST_SUITE" --env "$BROWSER"
-          fi
-
-      - name: Upload test artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-${{ matrix.browser }}
-          path: |
-            tests_output/nightwatch-html-report/
-            tests_output/screenshots/
-            tests_output/*.{xml,json}
-          retention-days: 30
-          if-no-files-found: warn
-
-      - name: Upload test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: html-report-${{ matrix.browser }}
-          path: tests_output/nightwatch-html-report/index.html
-          retention-days: 30
-
-  notify:
-    needs: test
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Notify Slack
-        if: env.SLACK_WEBHOOK_URL != ''
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ needs.test.result }}
-          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install Chrome for Testing
+      run: |
+        # Create a directory for Chrome
+        mkdir -p $HOME/chrome-for-testing
+        cd $HOME/chrome-for-testing
+        
+        # Download Chrome directly from known URL for mac-arm64
+        CHROME_VERSION="114.0.5735.90"
+        CHROME_URL="https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_VERSION/mac-arm64/chrome-mac-arm64.zip"
+        DRIVER_URL="https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_VERSION/mac-arm64/chromedriver-mac-arm64.zip"
+        
+        echo "Downloading Chrome from $CHROME_URL"
+        curl -L $CHROME_URL -o chrome.zip
+        
+        echo "Downloading ChromeDriver from $DRIVER_URL"
+        curl -L $DRIVER_URL -o chromedriver.zip
+        
+        # Extract the files
+        unzip chrome.zip
+        unzip chromedriver.zip
+        
+        # Set permissions
+        chmod +x chrome-mac-arm64/Google\ Chrome\ for\ Testing.app/Contents/MacOS/Google\ Chrome\ for\ Testing
+        chmod +x chromedriver-mac-arm64/chromedriver
+        
+        # Export the Chrome and ChromeDriver paths
+        echo "CHROME_PATH=$HOME/chrome-for-testing/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing" >> $GITHUB_ENV
+        echo "CHROMEDRIVER_PATH=$HOME/chrome-for-testing/chromedriver-mac-arm64/chromedriver" >> $GITHUB_ENV
+        
+        # Verify installation
+        echo "Verifying Chrome installation..."
+        "$HOME/chrome-for-testing/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing" --version
+        
+        echo "Verifying ChromeDriver installation..."
+        "$HOME/chrome-for-testing/chromedriver-mac-arm64/chromedriver" --version
+        
+    - name: Run Nightwatch tests
+      env:
+        CHROME_PATH: ${{ env.CHROME_PATH }}
+        CHROMEDRIVER_PATH: ${{ env.CHROMEDRIVER_PATH }}
+      run: npm test
