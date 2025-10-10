@@ -115,47 +115,56 @@ jobs:
         run: |
           echo "Installing dependencies for Chrome version $CHROME_VERSION"
           
-          # Fix vulnerabilities first
-          npm audit fix --force || true
-          
-          # Create a function to verify ChromeDriver
+          # Function to verify ChromeDriver installation
           verify_chromedriver() {
             if [ -f "$(npm bin)/chromedriver" ]; then
               CHROMEDRIVER_PATH=$(npm bin)/chromedriver
               echo "CHROMEDRIVER_PATH=$CHROMEDRIVER_PATH" >> $GITHUB_ENV
-              echo "Found chromedriver at: $CHROMEDRIVER_PATH"
               chmod +x "$CHROMEDRIVER_PATH"
-              
-              # Test ChromeDriver
               echo "Testing ChromeDriver..."
-              $CHROMEDRIVER_PATH --version
+              "$CHROMEDRIVER_PATH" --version
               return 0
             fi
             return 1
           }
           
-          # Try downloading specific version first
-          echo "Attempting to install ChromeDriver version $CHROME_VERSION"
+          # Function to get latest compatible version
+          get_compatible_version() {
+            local chrome_ver=$1
+            # Try a range of versions, starting from current and going down
+            for try_version in $(seq $chrome_ver -1 $(($chrome_ver - 5))); do
+              echo "Trying ChromeDriver version $try_version..."
+              if npm view chromedriver@$try_version version &> /dev/null; then
+                echo "Found compatible version $try_version"
+                echo "$try_version"
+                return 0
+              fi
+            done
+            return 1
+          }
+          
+          # First fix any npm vulnerabilities
+          npm audit fix --force || true
+          
+          # Try exact version match
           if npm install chromedriver@$CHROME_VERSION --save-dev && verify_chromedriver; then
             echo "Successfully installed ChromeDriver $CHROME_VERSION"
             exit 0
           fi
           
-          # Try latest minor version
-          echo "Trying latest minor version..."
-          LATEST_MINOR=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
-          if [ -n "$LATEST_MINOR" ]; then
-            echo "Found latest minor version: $LATEST_MINOR"
-            if npm install chromedriver@$LATEST_MINOR --save-dev && verify_chromedriver; then
-              echo "Successfully installed ChromeDriver $LATEST_MINOR"
+          # Try to find compatible version
+          COMPATIBLE_VERSION=$(get_compatible_version $CHROME_VERSION)
+          if [ -n "$COMPATIBLE_VERSION" ]; then
+            if npm install chromedriver@$COMPATIBLE_VERSION --save-dev && verify_chromedriver; then
+              echo "Successfully installed ChromeDriver $COMPATIBLE_VERSION"
               exit 0
             fi
           fi
           
-          # Try latest version as last resort
-          echo "Attempting to install latest ChromeDriver version"
+          # Try latest stable version as last resort
+          echo "Attempting to install latest stable ChromeDriver..."
           if npm install chromedriver@latest --save-dev && verify_chromedriver; then
-            echo "Successfully installed latest ChromeDriver"
+            echo "Successfully installed latest stable ChromeDriver"
             exit 0
           fi
           
@@ -218,7 +227,20 @@ jobs:
       - name: Setup Safari
         if: matrix.browser == 'safari' || github.event.inputs.browser == 'safari'
         run: |
-          # Enable SafariDriver (no need to change permissions as it's already executable)
+          # Kill any existing safaridriver processes
+          pkill -f safaridriver || true
+          sleep 2
+          
+          # Configure Safari settings
+          defaults write com.apple.Safari IncludeDevelopMenu -bool true
+          defaults write com.apple.Safari AllowRemoteAutomation -bool true
+          defaults write com.apple.Safari WebKitDeveloperExtrasEnabledPreferenceKey -bool true
+          defaults write com.apple.Safari.SandboxBroker StartWhenSDKToolsRequestsAutomation -bool true
+          defaults write com.apple.Safari WebKitPreferences.developerExtrasEnabled -bool true
+          defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled -bool true
+          defaults write com.apple.Safari AutomaticallyShowToolbarInFullScreen -bool true
+          
+          # Enable SafariDriver
           sudo safaridriver --enable
           
           # Create required directories
@@ -227,33 +249,25 @@ jobs:
           # Set environment variables
           echo "SAFARI_DRIVER_PATH=/usr/bin/safaridriver" >> $GITHUB_ENV
           
-          # Test SafariDriver
-          echo "Testing SafariDriver..."
-          /usr/bin/safaridriver --version || true
-          
-          # Configure Safari settings for testing
-          defaults write com.apple.Safari IncludeDevelopMenu -bool true
-          defaults write com.apple.Safari AllowRemoteAutomation -bool true
-          defaults write com.apple.Safari WebKitDeveloperExtrasEnabledPreferenceKey -bool true
-          defaults write com.apple.Safari.SandboxBroker StartWhenSDKToolsRequestsAutomation -bool true
-          
-          # Start SafariDriver in background and test connection
-          echo "Testing SafariDriver connection..."
-          /usr/bin/safaridriver -p 4444 &
+          # Start SafariDriver with debugging
+          echo "Starting SafariDriver with debugging..."
+          /usr/bin/safaridriver --enable-automatic-inspection --diagnose -p 4444 &
           SAFARI_PID=$!
           
-          # Wait for SafariDriver to start
-          sleep 5
+          # Wait for initialization
+          sleep 15
           
           # Test connection
           if curl -s http://localhost:4444/status > /dev/null; then
-            echo "SafariDriver is running successfully"
-            kill $SAFARI_PID || true
-            wait $SAFARI_PID 2>/dev/null || true
+            echo "SafariDriver is responding on port 4444"
           else
-            echo "Warning: SafariDriver connection test failed, but continuing..."
-            kill $SAFARI_PID || true
-            wait $SAFARI_PID 2>/dev/null || true
+            echo "Warning: SafariDriver not responding, checking process..."
+            if pgrep -x "safaridriver" > /dev/null; then
+              echo "SafariDriver process is running, continuing..."
+            else
+              echo "Error: SafariDriver process not found"
+              exit 1
+            fi
           fi
           
           echo "Safari setup completed"
