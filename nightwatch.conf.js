@@ -25,7 +25,7 @@ module.exports = {
     chrome: {
       webdriver: {
         start_process: true,
-        server_path: require('chromedriver').path,
+        server_path: process.env.CHROMEDRIVER_PATH || require('chromedriver').path,
         port: 9515
       },
       desiredCapabilities: {
@@ -57,7 +57,7 @@ module.exports = {
     firefox: {
       webdriver: {
         start_process: true,
-        server_path: require('geckodriver').path,
+        server_path: process.env.GECKODRIVER_PATH || require('geckodriver').path,
         port: 4444,
         cli_args: ['--log', 'debug']
       },
