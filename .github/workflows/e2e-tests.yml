@@ -48,38 +48,111 @@ jobs:
       - name: Setup Chrome
         if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome'
         run: |
-          # Set up Chrome for Testing with a stable version
+          # Get the latest known good version from Chrome for Testing
+          echo "Fetching latest Chrome version..."
+          LATEST_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json | jq -r '.channels.Stable.version')
+          
+          # Determine platform
           PLATFORM="mac-$(uname -m | sed 's/x86_64/x64/;s/arm64/arm64/')"
-          VERSION="114.0.5735.90"
+          echo "Platform detected: $PLATFORM"
+          echo "Chrome version: $LATEST_VERSION"
+          
+          # Create and move to temporary directory
           TEMP_DIR=$(mktemp -d)
           cd "$TEMP_DIR"
           
-          echo "Setting up Chrome and ChromeDriver..."
-          curl -Lo chrome.zip "https://storage.googleapis.com/chrome-for-testing-public/$VERSION/$PLATFORM/chrome-$PLATFORM.zip"
-          curl -Lo chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/$VERSION/$PLATFORM/chromedriver-$PLATFORM.zip"
+          # Download Chrome
+          echo "Downloading Chrome for Testing..."
+          CHROME_URL="https://storage.googleapis.com/chrome-for-testing-public/$LATEST_VERSION/$PLATFORM/chrome-$PLATFORM.zip"
+          echo "Chrome URL: $CHROME_URL"
+          curl -fL --retry 3 --retry-delay 2 -o chrome.zip "$CHROME_URL"
+          if [ $? -ne 0 ]; then
+            echo "Failed to download Chrome"
+            exit 1
+          fi
           
-          unzip -q chrome.zip
-          unzip -q chromedriver.zip
+          # Download ChromeDriver
+          echo "Downloading ChromeDriver..."
+          DRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/$LATEST_VERSION/$PLATFORM/chromedriver-$PLATFORM.zip"
+          echo "ChromeDriver URL: $DRIVER_URL"
+          curl -fL --retry 3 --retry-delay 2 -o chromedriver.zip "$DRIVER_URL"
+          if [ $? -ne 0 ]; then
+            echo "Failed to download ChromeDriver"
+            exit 1
+          fi
           
+          # Verify downloads
+          echo "Verifying downloads..."
+          if ! [ -s chrome.zip ] || ! [ -s chromedriver.zip ]; then
+            echo "Downloaded files are empty or missing"
+            ls -l chrome.zip chromedriver.zip
+            exit 1
+          fi
+          
+          # Extract Chrome
+          echo "Extracting Chrome..."
+          unzip -q chrome.zip || {
+            echo "Failed to extract Chrome"
+            exit 1
+          }
+          
+          # Extract ChromeDriver
+          echo "Extracting ChromeDriver..."
+          unzip -q chromedriver.zip || {
+            echo "Failed to extract ChromeDriver"
+            exit 1
+          }
+          
+          # Set up Chrome
           CHROME_PATH="$TEMP_DIR/chrome-$PLATFORM/chrome"
+          if [ ! -f "$CHROME_PATH" ]; then
+            echo "Chrome binary not found at: $CHROME_PATH"
+            ls -R "$TEMP_DIR"
+            exit 1
+          fi
           chmod +x "$CHROME_PATH"
           
+          # Set up ChromeDriver
+          if [ ! -f "chromedriver-$PLATFORM/chromedriver" ]; then
+            echo "ChromeDriver not found"
+            ls -R "$TEMP_DIR"
+            exit 1
+          fi
           sudo mv "chromedriver-$PLATFORM/chromedriver" /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
           sudo xattr -d com.apple.quarantine /usr/local/bin/chromedriver 2>/dev/null || true
           
+          # Set environment variables
           echo "CHROME_BINARY_PATH=$CHROME_PATH" >> $GITHUB_ENV
           echo "CHROMEDRIVER_PATH=/usr/local/bin/chromedriver" >> $GITHUB_ENV
           
-          # Test ChromeDriver
+          # Verify installations
+          echo "Chrome version:"
+          "$CHROME_PATH" --version || {
+            echo "Failed to verify Chrome version"
+            exit 1
+          }
+          
+          echo "ChromeDriver version:"
+          chromedriver --version || {
+            echo "Failed to verify ChromeDriver version"
+            exit 1
+          }
+          
+          # Test ChromeDriver connection
+          echo "Testing ChromeDriver..."
           chromedriver --port=9515 &
+          DRIVER_PID=$!
           sleep 2
+          
           if curl -s http://localhost:9515/status > /dev/null; then
             echo "✓ ChromeDriver is working"
-            pkill -f chromedriver
+            kill $DRIVER_PID 2>/dev/null || true
+            wait $DRIVER_PID 2>/dev/null || true
           else
             echo "✗ ChromeDriver failed to start"
-            pkill -f chromedriver
+            kill $DRIVER_PID 2>/dev/null || true
+            wait $DRIVER_PID 2>/dev/null || true
             exit 1
           fi
 
