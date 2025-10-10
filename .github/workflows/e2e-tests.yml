@@ -61,25 +61,41 @@ jobs:
           TEMP_DIR=$(mktemp -d)
           cd "$TEMP_DIR"
           
+          # Get download URLs from the API
+          echo "Getting download URLs..."
+          DOWNLOADS=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json | \
+                     jq -r --arg VER "$LATEST_VERSION" --arg PLAT "$PLATFORM" \
+                     '.versions[] | select(.version==$VER) | .downloads | {chrome: .chrome[], chromedriver: .chromedriver[]} | select(.platform==$PLAT)')
+          
+          CHROME_URL=$(echo "$DOWNLOADS" | jq -r 'select(.platform=="'$PLATFORM'") | .chrome.url')
+          DRIVER_URL=$(echo "$DOWNLOADS" | jq -r 'select(.platform=="'$PLATFORM'") | .chromedriver.url')
+          
+          echo "Chrome URL: $CHROME_URL"
+          echo "ChromeDriver URL: $DRIVER_URL"
+          
           # Download Chrome
           echo "Downloading Chrome for Testing..."
-          CHROME_URL="https://storage.googleapis.com/chrome-for-testing-public/$LATEST_VERSION/$PLATFORM/chrome-$PLATFORM.zip"
-          echo "Chrome URL: $CHROME_URL"
-          curl -fL --retry 3 --retry-delay 2 -o chrome.zip "$CHROME_URL"
-          if [ $? -ne 0 ]; then
+          curl -fL --retry 3 --retry-delay 2 -o chrome.zip "$CHROME_URL" || {
             echo "Failed to download Chrome"
             exit 1
-          fi
+          }
           
           # Download ChromeDriver
           echo "Downloading ChromeDriver..."
-          DRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/$LATEST_VERSION/$PLATFORM/chromedriver-$PLATFORM.zip"
-          echo "ChromeDriver URL: $DRIVER_URL"
-          curl -fL --retry 3 --retry-delay 2 -o chromedriver.zip "$DRIVER_URL"
-          if [ $? -ne 0 ]; then
+          curl -fL --retry 3 --retry-delay 2 -o chromedriver.zip "$DRIVER_URL" || {
             echo "Failed to download ChromeDriver"
             exit 1
-          fi
+          }
+          
+          # Verify downloads
+          echo "Verifying downloads..."
+          for file in chrome.zip chromedriver.zip; do
+            if [ ! -s "$file" ]; then
+              echo "Error: $file is empty or missing"
+              ls -l "$file"
+              exit 1
+            fi
+          done
           
           # Verify downloads
           echo "Verifying downloads..."
@@ -89,36 +105,65 @@ jobs:
             exit 1
           fi
           
-          # Extract Chrome
+          # Verify and extract Chrome
+          echo "Verifying Chrome archive..."
+          file chrome.zip
+          echo "Chrome archive size: $(ls -lh chrome.zip)"
+          
           echo "Extracting Chrome..."
-          unzip -q chrome.zip || {
-            echo "Failed to extract Chrome"
+          unzip -t chrome.zip > /dev/null || {
+            echo "Chrome archive is corrupt"
             exit 1
           }
+          unzip -q chrome.zip
           
-          # Extract ChromeDriver
+          # Verify and extract ChromeDriver
+          echo "Verifying ChromeDriver archive..."
+          file chromedriver.zip
+          echo "ChromeDriver archive size: $(ls -lh chromedriver.zip)"
+          
           echo "Extracting ChromeDriver..."
-          unzip -q chromedriver.zip || {
-            echo "Failed to extract ChromeDriver"
+          mkdir -p chromedriver-extract
+          cd chromedriver-extract
+          unzip -t ../chromedriver.zip > /dev/null || {
+            echo "ChromeDriver archive is corrupt"
             exit 1
           }
+          unzip -q ../chromedriver.zip
+          cd ..
           
-          # Set up Chrome
-          CHROME_PATH="$TEMP_DIR/chrome-$PLATFORM/chrome"
-          if [ ! -f "$CHROME_PATH" ]; then
-            echo "Chrome binary not found at: $CHROME_PATH"
+          # Set up Chrome for macOS
+          echo "Setting up Chrome..."
+          CHROME_APP="$TEMP_DIR/chrome-$PLATFORM/Google Chrome for Testing.app"
+          CHROME_PATH="$CHROME_APP/Contents/MacOS/Google Chrome for Testing"
+          
+          if [ ! -d "$CHROME_APP" ]; then
+            echo "Chrome.app not found at expected path: $CHROME_APP"
+            echo "Contents of temp directory:"
             ls -R "$TEMP_DIR"
             exit 1
           fi
+          
+          if [ ! -f "$CHROME_PATH" ]; then
+            echo "Chrome binary not found at expected path: $CHROME_PATH"
+            echo "Contents of Chrome.app directory:"
+            ls -R "$CHROME_APP"
+            exit 1
+          fi
+          
           chmod +x "$CHROME_PATH"
+          echo "Chrome binary found at: $CHROME_PATH"
           
           # Set up ChromeDriver
-          if [ ! -f "chromedriver-$PLATFORM/chromedriver" ]; then
-            echo "ChromeDriver not found"
-            ls -R "$TEMP_DIR"
+          echo "Setting up ChromeDriver..."
+          CHROMEDRIVER_EXTRACT="$TEMP_DIR/chromedriver-extract/chromedriver-$PLATFORM"
+          if [ ! -f "$CHROMEDRIVER_EXTRACT/chromedriver" ]; then
+            echo "ChromeDriver not found at expected path: $CHROMEDRIVER_EXTRACT/chromedriver"
+            echo "Contents of chromedriver directory:"
+            ls -R "$TEMP_DIR/chromedriver-extract"
             exit 1
           fi
-          sudo mv "chromedriver-$PLATFORM/chromedriver" /usr/local/bin/
+          sudo mv "$CHROMEDRIVER_EXTRACT/chromedriver" /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
           sudo xattr -d com.apple.quarantine /usr/local/bin/chromedriver 2>/dev/null || true
           
@@ -127,17 +172,44 @@ jobs:
           echo "CHROMEDRIVER_PATH=/usr/local/bin/chromedriver" >> $GITHUB_ENV
           
           # Verify installations
-          echo "Chrome version:"
-          "$CHROME_PATH" --version || {
+          echo "Verifying Chrome installation..."
+          if "$CHROME_PATH" --version; then
+            echo "Chrome version verified successfully"
+          else
             echo "Failed to verify Chrome version"
+            echo "Chrome binary permissions:"
+            ls -l "$CHROME_PATH"
+            echo "Chrome binary file type:"
+            file "$CHROME_PATH"
             exit 1
-          }
+          fi
           
-          echo "ChromeDriver version:"
-          chromedriver --version || {
+          echo "Verifying ChromeDriver installation..."
+          if chromedriver --version; then
+            echo "ChromeDriver version verified successfully"
+          else
             echo "Failed to verify ChromeDriver version"
+            echo "ChromeDriver permissions:"
+            ls -l /usr/local/bin/chromedriver
+            echo "ChromeDriver file type:"
+            file /usr/local/bin/chromedriver
             exit 1
-          }
+          fi
+          
+          # Verify versions match
+          CHROME_VER=$("$CHROME_PATH" --version | grep -o '[0-9]*\.[0-9]*\.[0-9]*' || echo "unknown")
+          DRIVER_VER=$(chromedriver --version | grep -o '[0-9]*\.[0-9]*\.[0-9]*' || echo "unknown")
+          
+          echo "Chrome version: $CHROME_VER"
+          echo "ChromeDriver version: $DRIVER_VER"
+          
+          if [[ "$CHROME_VER" != "unknown" && "$DRIVER_VER" != "unknown" ]]; then
+            CHROME_MAJOR=$(echo "$CHROME_VER" | cut -d. -f1)
+            DRIVER_MAJOR=$(echo "$DRIVER_VER" | cut -d. -f1)
+            if [ "$CHROME_MAJOR" != "$DRIVER_MAJOR" ]; then
+              echo "Warning: Chrome ($CHROME_MAJOR) and ChromeDriver ($DRIVER_MAJOR) major versions don't match"
+            fi
+          fi
           
           # Test ChromeDriver connection
           echo "Testing ChromeDriver..."
