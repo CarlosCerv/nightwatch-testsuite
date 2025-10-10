@@ -37,14 +37,18 @@ module.exports = {
         cli_args: [
           '--verbose',
           '--whitelisted-ips=""',
-          '--port=9515'
+          '--log-level=INFO'
         ],
         timeout_options: {
-          timeout: 60000,
+          timeout: 90000,
           retry_attempts: 5
         },
         check_process: true,
-        default_path_prefix: ''
+        keep_alive: true,
+        request_timeout_options: {
+          timeout: 60000,
+          retry_attempts: 3
+        }
       },
       desiredCapabilities: {
         browserName: 'chrome',

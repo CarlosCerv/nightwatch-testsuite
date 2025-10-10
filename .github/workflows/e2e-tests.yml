@@ -51,42 +51,40 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Setup Chrome
+      - name: Setup Chrome and ChromeDriver
         if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome' || github.event.inputs.browser == 'headless'
-        uses: browser-actions/setup-chrome@latest
-        with:
-          chrome-version: 'stable'
-
-      - name: Get Chrome version
-        if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome' || github.event.inputs.browser == 'headless'
-        id: chrome-version
         run: |
-          # On macOS, Chrome is installed by browser-actions/setup-chrome
-          # The binary is located in '/Applications/Google Chrome.app'
-          CHROME_APP="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          # Download and install Chrome for Testing and ChromeDriver
+          CHROME_VERSION="stable"
+          PLATFORM="mac-x64"  # for macOS Intel. Use mac-arm64 for Apple Silicon
           
-          if [ ! -f "$CHROME_APP" ]; then
-            echo "Chrome application not found at expected location"
-            exit 1
-          fi
+          # Get the latest Chrome for Testing version
+          LATEST_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json | jq -r '.channels.Stable.version')
+          echo "Latest Chrome for Testing version: $LATEST_VERSION"
           
-          # Get Chrome version using the actual Chrome binary
-          CHROME_FULL_VERSION=$("$CHROME_APP" --version)
-          CHROME_MAJOR_VERSION=$(echo "$CHROME_FULL_VERSION" | awk '{print $3}' | cut -d. -f1)
+          # Download Chrome for Testing
+          curl -o chrome-testing.zip "https://edgedl.me.gstatic.com/chrome/mac/universal/stable/GGRO/googlechrome-${LATEST_VERSION}.dmg"
           
-          # Verify we got a version number
-          if [ -z "$CHROME_MAJOR_VERSION" ]; then
-            echo "Failed to detect Chrome version"
-            exit 1
-          fi
+          # Download matching ChromeDriver
+          curl -o chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/${LATEST_VERSION}/${PLATFORM}/chromedriver-${PLATFORM}.zip"
           
-          echo "Detected Chrome version: $CHROME_MAJOR_VERSION"
+          # Extract ChromeDriver
+          unzip -o chromedriver.zip
+          
+          # Move ChromeDriver to /usr/local/bin and make it executable
+          sudo mv chromedriver-${PLATFORM}/chromedriver /usr/local/bin/
+          sudo chmod +x /usr/local/bin/chromedriver
+          
+          # Verify installations
+          echo "ChromeDriver version:"
+          chromedriver --version
+          
+          # Set environment variable for Nightwatch
+          echo "CHROMEDRIVER_PATH=/usr/local/bin/chromedriver" >> $GITHUB_ENV
+          
+          # Store Chrome version
+          CHROME_MAJOR_VERSION=$(echo "$LATEST_VERSION" | cut -d. -f1)
           echo "CHROME_VERSION=$CHROME_MAJOR_VERSION" >> $GITHUB_ENV
-          echo "chrome_version=$CHROME_MAJOR_VERSION" >> $GITHUB_OUTPUT
-          
-          # Verify Chrome installation
-          echo "Full Chrome version info:"
-          "$CHROME_APP" --version
 
       - name: Setup Firefox
         if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
