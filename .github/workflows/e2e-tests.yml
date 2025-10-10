@@ -1,0 +1,117 @@
+name: E2E Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      browser:
+        description: 'Browser to run tests'
+        required: true
+        default: 'chrome'
+        type: choice
+        options:
+          - chrome
+          - firefox
+          - headless
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: string
+
+# Environment variables
+env:
+  NODE_VERSION: '20.x'
+  BASE_URL: ${{ secrets.BASE_URL }}
+  WAIT_TIMEOUT: 10000
+  RETRY_TIMEOUT: 5000
+  PARALLEL: true
+
+jobs:
+  test:
+    name: E2E Tests
+    runs-on: macos-latest  # Changed to macOS for Safari support
+    
+    strategy:
+      matrix:
+        browser: [chrome, firefox, safari]
+      fail-fast: false # Continue with other browsers if one fails
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Chrome
+        if: matrix.browser == 'chrome' || github.event.inputs.browser == 'chrome' || github.event.inputs.browser == 'headless'
+        uses: browser-actions/setup-chrome@latest
+        with:
+          chrome-version: stable
+
+      - name: Setup Firefox
+        if: matrix.browser == 'firefox' || github.event.inputs.browser == 'firefox'
+        uses: browser-actions/setup-firefox@latest
+        with:
+          firefox-version: latest
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install selenium-webdriver@latest
+          npm install geckodriver@latest
+          npm install chromedriver@latest
+
+      - name: Run tests (Manual Trigger - Specific Browser)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.browser != ''
+        run: |
+          if [ "${{ github.event.inputs.test_suite }}" = "all" ]; then
+            npm run test:${{ github.event.inputs.browser }}
+          else
+            npm run test:single ${{ github.event.inputs.test_suite }} --env ${{ github.event.inputs.browser }}
+          fi
+
+      - name: Run tests (Matrix Strategy)
+        if: github.event_name != 'workflow_dispatch'
+        run: npm run test:${{ matrix.browser }}
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-${{ matrix.browser }}
+          path: |
+            tests_output/nightwatch-html-report/
+            tests_output/screenshots/
+            tests_output/
+          retention-days: 30
+
+      - name: Upload Test Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-report-${{ matrix.browser }}
+          path: tests_output/nightwatch-html-report/index.html
+          retention-days: 30
+
+  notify:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ needs.test.result }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: env.SLACK_WEBHOOK_URL != ''

@@ -1,0 +1,11 @@
+{
+    "email": [
+        "carlos.eduardo@wizeline.com",
+        "locked_out_user",
+        "problem_user",
+        "performance_glitch_user"],
+    "password": "Test123.",
+    "invalidPassword": "Test1234.",
+    "invalidUser": "invalid_user@mail.com",
+    "url": "https://todoist.com/"
+}

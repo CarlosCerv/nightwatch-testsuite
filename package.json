@@ -1,27 +1,30 @@
 {
-  "name": "framework_test",
+  "name": "nightwatch-testsuite",
   "version": "1.0.0",
+  "description": "E2E Testing Suite using Nightwatch.js",
   "main": "index.js",
   "scripts": {
-    "TEST:001_TODOIST_USER_LOGIN_SUCCESS": "nightwatch test/tests/testTodoistLogin.spec.js --testcase '001_TODOIST_USER_LOGIN_SUCCESS' --reporter config/html-reporter/html-reporter.js",
-    "TEST:002_TODOIST_USER_LOGIN_INCORRECT_EMAIL": "nightwatch test/tests/testTodoistLogin.spec.js --testcase '002_TODOIST_USER_LOGIN_INCORRECT_EMAIL' --reporter config/html-reporter/html-reporter.js",
-    "TEST:003_TODOIST_USER_LOGIN_INCORRECT_PASSWORD": "nightwatch test/tests/testTodoistLogin.spec.js --testcase '003_TODOIST_USER_LOGIN_INCORRECT_PASSWORD' --reporter config/html-reporter/html-reporter.js"
+    "test": "nightwatch",
+    "test:safari": "nightwatch --env safari",
+    "test:chrome": "nightwatch --env chrome",
+    "test:firefox": "nightwatch --env firefox",
+    "test:single": "nightwatch --env safari",
+    "test:parallel": "nightwatch --env safari,chrome,firefox --parallel",
+    "safaridriver:setup": "sudo safaridriver --enable"
   },
-  "keywords": [],
+  "keywords": [
+    "nightwatch",
+    "e2e",
+    "testing",
+    "automation"
+  ],
   "author": "Carlos Cervantes",
-  "license": "",
-  "dependencies": {
-    "fs": "0.0.1-security",
-    "handlebars": "^4.7.7",
-    "nightwatch-html-reporter": "^2.0.6",
-    "path": "^0.12.7"
-  },
+  "license": "MIT",
   "devDependencies": {
-    "chromedriver": "^128.0.0",
-    "dotenv": "^16.0.0",
-    "geckodriver": "^4.4.3",
-    "nightwatch": "^2.0.10",
-    "nightwatch-slack-reporter": "0.0.2",
-    "selenium-webdriver": "^4.1.1"
+    "chromedriver": "^116.0.0",
+    "dotenv": "^16.3.1",
+    "geckodriver": "^4.0.4",
+    "lodash": "^4.17.21",
+    "nightwatch": "^2.6.21"
   }
 }

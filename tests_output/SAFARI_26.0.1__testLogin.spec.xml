@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites errors="0"
+            failures="1"
+            tests="1">
+
+  <testsuite name="testLogin.spec"
+    errors="0" failures="1" hostname="" id="" package="testLogin.spec" skipped="5"
+    tests="1" time="2.623" timestamp="">
+  
+    <testcase name="001_TODOIST_USER_LOGIN_SUCCESS" classname="testLogin.spec" time="0.1860" assertions="1">  <failure message="login(...).mainPageDisplayed is not a function">TypeError: login(...).mainPageDisplayed is not a function
+    at 001_TODOIST_USER_LOGIN_SUCCESS (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/tests/e2e/testLogin.spec.js:13:26)</failure>
+<system-out>[[ATTACHMENT|/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/tests_output/screenshots/testLogin.spec/001_TODOIST_USER_LOGIN_SUCCESS_FAILED_Oct-10-2025-122641-GMT-0600.png]]</system-out>
+    
+    </testcase>
+  
+
+  
+    <system-err>
+       ✖ TypeError
+   By[AVAILABLE_LOCATORS[elementInstance.locateStrategy]] is not a function
+    Stack Trace :
+    at LocateElement.create (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/element/locator.js:34:66)
+    at NightwatchLocator.create (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/element/locator-factory.js:17:20)
+    at MethodMappings.locateMultipleElements (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/transport/selenium-webdriver/method-mappings.js:371:45)
+    at Object.locateMultipleElements (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/transport/selenium-webdriver/actions.js:48:94)
+    at SafariDriverTransport.executeProtocolAction (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/transport/selenium-webdriver/index.js:386:48)
+    at LocateElement.sendElementsAction (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/element/locator.js:283:27)
+    at LocateElement.executeProtocolAction (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/element/locator.js:230:17)
+    at LocateElement.findElement (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/element/locator.js:167:31)
+    at WaitForElementPresent.findElement (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/element/command.js:215:40)
+    at action (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/api/element-commands/_waitFor.js:42:28)
+
+    </system-err>
+  
+
+    
+
+  
+    
+    <testcase
+      name="Login: Login Standar User" classname="testLogin.spec">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Login: Standar User Access Success" classname="testLogin.spec">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Log Out: Navigate to Log Out Option" classname="testLogin.spec">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Log Out: Log out from Standar User flow" classname="testLogin.spec">
+      <skipped />
+    </testcase>
+    
+    <testcase
+      name="Log Out: Log out from Standar User Success" classname="testLogin.spec">
+      <skipped />
+    </testcase>
+    
+  
+  </testsuite>
+</testsuites>
