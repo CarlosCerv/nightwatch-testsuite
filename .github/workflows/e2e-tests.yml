@@ -67,8 +67,10 @@ jobs:
         run: |
           npm ci
           npm install selenium-webdriver@latest
-          npm install geckodriver@latest
           npm install chromedriver@latest
+          if [ "${{ matrix.browser }}" = "firefox" ] || [ "${{ github.event.inputs.browser }}" = "firefox" ]; then
+            npm install geckodriver@latest
+          fi
 
       - name: Run tests (Manual Trigger - Specific Browser)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.browser != ''

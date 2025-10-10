@@ -23,7 +23,7 @@
   "devDependencies": {
     "chromedriver": "^116.0.0",
     "dotenv": "^16.3.1",
-    "geckodriver": "^4.0.4",
+    "geckodriver": "^4.5.1",
     "lodash": "^4.17.21",
     "nightwatch": "^2.6.21"
   }

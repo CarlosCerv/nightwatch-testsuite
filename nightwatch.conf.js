@@ -13,6 +13,12 @@ module.exports = {
         enabled: true,
         on_failure: true,
         path: 'tests_output/screenshots'
+      },
+      webdriver: {
+        timeout_options: {
+          timeout: 60000,
+          retry_attempts: 3
+        }
       }
     },
     
@@ -38,23 +44,28 @@ module.exports = {
       webdriver: {
         start_process: true,
         server_path: '/usr/bin/safaridriver',
-        port: 4444,
-        timeout_options: {
-          timeout: 60000,
-          retry_attempts: 3
-        }
+        port: 4444
       },
       desiredCapabilities: {
         browserName: 'safari',
         'safari:options': {
-          automaticInspection: false,
-          automaticProfiling: false,
-          acceptInsecureCerts: false
+          automaticInspection: false
         }
+      }
+    },
+    
+    firefox: {
+      webdriver: {
+        start_process: true,
+        server_path: require('geckodriver').path,
+        port: 4444,
+        cli_args: ['--log', 'debug']
       },
-      globals: {
-        waitForConditionTimeout: 10000,
-        retryAssertionTimeout: 5000
+      desiredCapabilities: {
+        browserName: 'firefox',
+        'moz:firefoxOptions': {
+          args: ['--headless']
+        }
       }
     }
   }
