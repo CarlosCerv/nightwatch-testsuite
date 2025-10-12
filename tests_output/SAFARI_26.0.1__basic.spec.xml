@@ -5,9 +5,9 @@
 
   <testsuite name="basic.spec"
     errors="0" failures="0" hostname="" id="" package="basic.spec" skipped="0"
-    tests="1" time="5.800" timestamp="">
+    tests="1" time="3.293" timestamp="">
   
-    <testcase name="loads the homepage" classname="basic.spec" time="2.882" assertions="2">
+    <testcase name="loads the homepage" classname="basic.spec" time="1.646" assertions="2">
 
     
 

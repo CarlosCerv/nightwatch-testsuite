@@ -1,54 +1,30 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites errors="1"
-            failures="3"
+<testsuites errors="0"
+            failures="2"
             tests="1">
 
   <testsuite name="testTodoistLogin.spec"
-    errors="1" failures="3" hostname="" id="" package="testTodoistLogin.spec" skipped="2"
-    tests="1" time="63.54" timestamp="">
+    errors="0" failures="2" hostname="" id="" package="testTodoistLogin.spec" skipped="2"
+    tests="1" time="69.67" timestamp="">
   
-    <testcase name="successfully logs in with valid credentials" classname="testTodoistLogin.spec" time="30.73" assertions="3">  <failure message="Timed out while waiting for element &lt;//a[@class=&#34;Z2j5FoeQ_umI7vX0SmxF Y5eL4cjJHcHaCQ8EbL7V KmtwbG6Xt2tkeuPKmGfL&#34;]&gt; to be present for 10000 milliseconds. - expected &#34;visible&#34; but got: &#34;not found&#34; (10221ms)">    at LoginSteps.validateMainPage (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/lib/helpers/login-step.js:23:18)
-    at LoginSteps.navigateToLogin (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/lib/helpers/login-step.js:38:24)
+    <testcase name="successfully logs in with valid credentials" classname="testTodoistLogin.spec" time="34.11" assertions="5">
+
+      <failure message="Testing if element &lt;Element [name=@logoTodoist]&gt; is visible in 5000ms - expected &#34;is visible&#34; but got: &#34;element could not be located&#34; (18021ms)">    at LoginSteps.validateMainPage (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/lib/helpers/login-step.js:18:25)
+    at LoginSteps.mainPageDisplayed (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/lib/helpers/login-step.js:27:20)
+    at LoginSteps.navigateToLogin (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/lib/helpers/login-step.js:32:24)
     at DescribeInstance.&lt;anonymous&gt; (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/tests/e2e/testTodoistLogin.spec.js:21:26)</failure>
 
-      <failure message="Timed out while waiting for element &lt;//header/nav[2]/div[1]/ul[2]/li[1]/a[1]&gt; to be present for 10000 milliseconds. - expected &#34;visible&#34; but got: &#34;not found&#34; (10177ms)">    at LoginSteps.navigateToLogin (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/lib/helpers/login-step.js:40:18)
-    at async DescribeInstance.&lt;anonymous&gt; (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/tests/e2e/testTodoistLogin.spec.js:21:9)</failure>
-
-      <failure message="Timed out while waiting for element &lt;input[type=&#34;email&#34;]&gt; for 10000 milliseconds - expected &#34;found&#34; but got: &#34;error while locating the element&#34; (10033ms)">    at Page.waitForPageReady (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/pages/loginPage.js:113:18)
-    at LoginSteps.login (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/lib/helpers/login-step.js:59:18)
-    at DescribeInstance.&lt;anonymous&gt; (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/tests/e2e/testTodoistLogin.spec.js:22:26)</failure>
-<system-out>[[ATTACHMENT|/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/tests_output/screenshots/testTodoistLogin.spec/successfully-logs-in-with-valid-credentials_FAILED_Oct-10-2025-122715-GMT-0600.png]]</system-out>
     
-    <error message="Timed out while waiting for element &lt;input[type=&#34;email&#34;]&gt; for 10000 milliseconds - expected [0;32m&#34;found&#34;[0m but got: [0;31m&#34;error while locating the element&#34;[0m [0;90m(10033ms)[0m" type="error"><![CDATA[
-    Error
-    at Command.executeCommand (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/page-object/command-wrapper.js:246:22)
-    at Page.waitForElementPresent (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/page-object/command-wrapper.js:80:27)
-    at Page.waitForPageReady (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/pages/loginPage.js:113:18)
-    at LoginSteps.login (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/lib/helpers/login-step.js:59:18)
-    at DescribeInstance.&lt;anonymous&gt; (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/tests/e2e/testTodoistLogin.spec.js:22:26)
-    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
-    ]]></error>
+
+    
+
+      <failure message="Timed out while waiting for element &lt;input[type=&#34;email&#34;]&gt; to be present for 15000 milliseconds. - expected &#34;visible&#34; but got: &#34;not found&#34; (15066ms)">    at LoginSteps.login (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/lib/helpers/login-step.js:46:18)
+    at DescribeInstance.&lt;anonymous&gt; (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/src/tests/e2e/testTodoistLogin.spec.js:22:26)</failure>
+<system-out>[[ATTACHMENT|/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/tests_output/screenshots/testTodoistLogin.spec/successfully-logs-in-with-valid-credentials_FAILED_Oct-12-2025-110256-GMT-0600.png]]</system-out>
     
     </testcase>
   
 
-  
-    <system-err>
-       ✖ TypeError
-   By[AVAILABLE_LOCATORS[elementInstance.locateStrategy]] is not a function
-    Stack Trace :
-    at LocateElement.create (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/element/locator.js:34:66)
-    at NightwatchLocator.create (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/element/locator-factory.js:17:20)
-    at MethodMappings.locateMultipleElements (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/transport/selenium-webdriver/method-mappings.js:371:45)
-    at Object.locateMultipleElements (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/transport/selenium-webdriver/actions.js:48:94)
-    at SafariDriverTransport.executeProtocolAction (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/transport/selenium-webdriver/index.js:386:48)
-    at LocateElement.sendElementsAction (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/element/locator.js:283:27)
-    at LocateElement.executeProtocolAction (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/element/locator.js:230:17)
-    at LocateElement.findElement (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/element/locator.js:167:31)
-    at WaitForElementPresent.findElement (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/element/command.js:215:40)
-    at action (/Users/carloscervantesarteaga/Documents/GitHub/nightwatch-testsuite/node_modules/nightwatch/lib/api/element-commands/_waitFor.js:42:28)
-
-    </system-err>
   
 
     
