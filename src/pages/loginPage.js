@@ -42,8 +42,8 @@ module.exports = {
 
         // Validation elements
         errorMessage: {
-            selector: '.a83bd4e0._266d6623._8f5b5f2b.f9408a0e',
-            locateStrategy: 'css',
+            selector: '//*[@id="element-3"]',
+            locateStrategy: 'xpath',
         },
     },
 
