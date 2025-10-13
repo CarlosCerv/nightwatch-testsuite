@@ -121,18 +121,3 @@ jobs:
           name: html-report-${{ matrix.browser }}
           path: tests_output/nightwatch-html-report/index.html
           retention-days: 30
-
-  notify:
-    needs: test
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Notify Slack
-        # This line is corrected to use the proper expression syntax
-        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ needs.test.result }}
-          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
