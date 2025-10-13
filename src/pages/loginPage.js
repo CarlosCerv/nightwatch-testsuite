@@ -10,16 +10,16 @@ module.exports = {
     elements: {
         // Form elements - using better selector strategies
         emailInput: {
-            selector: 'input[type="email"]',
-            locateStrategy: 'css',
+            selector: '//*[@id="element-0"]',
+            locateStrategy: 'xpath',
         },
         passwordInput: {
-            selector: 'input[type="password"]',
-            locateStrategy: 'css',
+            selector: '//*[@id="element-2"]',
+            locateStrategy: 'xpath',
         },
         loginButton: {
-            selector: 'button[data-gtm-id="start-email-login"]',
-            locateStrategy: 'css',
+            selector: '//*[@id="todoist_app"]/div/div/div[2]/div[1]/div/div/form/button',
+            locateStrategy: 'xpath',
         },
         keepLoggedInCheckbox: {
             selector: '#permanent_login',
