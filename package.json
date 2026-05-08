@@ -8,7 +8,7 @@
     "test:safari": "nightwatch --env safari",
     "test:chrome": "nightwatch --env chrome",
     "test:firefox": "nightwatch --env firefox",
-    "test:single": "nightwatch",
+    "test:single": "nightwatch --test",
     "test:parallel": "nightwatch --env safari,chrome,firefox --parallel",
     "safaridriver:setup": "sudo safaridriver --enable",
     "lint": "eslint src/**/*.js",
@@ -24,19 +24,21 @@
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "chromedriver": "^114.0.0",
-    "dotenv": "^16.3.1",
+    "chromedriver": "^126.0.0",
+    "dotenv": "^16.4.1",
     "eslint": "^10.3.0",
-    "geckodriver": "^4.5.1",
+    "geckodriver": "^4.4.2",
     "lodash": "^4.17.21",
-    "nightwatch": "^3.4.0",
-    "selenium-webdriver": "^4.18.1"
+    "nightwatch": "^3.7.0",
+    "selenium-webdriver": "^4.21.0"
   },
   "overrides": {
-    "semver": "^7.5.4",
-    "tough-cookie": "^4.1.3",
+    "semver": "^7.6.2",
+    "tough-cookie": "^4.1.4",
     "json5": "^2.2.3",
-    "qs": "^6.11.2",
-    "follow-redirects": "^1.15.4"
+    "qs": "^6.12.1",
+    "follow-redirects": "^1.15.6",
+    "axios": "^1.7.4",
+    "express": "^4.19.2"
   }
 }
