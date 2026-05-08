@@ -8,19 +8,19 @@ module.exports = {
     },
 
     elements: {
-        // Form elements - using CSS selectors for better performance and maintainability
-        emailInput: '#element-0',
-        passwordInput: '#element-2',
-        loginButton: 'button[type="submit"]', // Assuming it's a submit button
-        keepLoggedInCheckbox: '#permanent_login',
+        // Form elements - using robust CSS selectors based on attributes
+        emailInput: 'input[type="email"]',
+        passwordInput: 'input[type="password"]',
+        loginButton: 'button[type="submit"]',
+        keepLoggedInCheckbox: 'input[type="checkbox"][name*="permanent"]',
 
-        // Social login buttons - using CSS selectors with text content
-        googleLoginButton: 'span:has-text("Continue with Google")',
-        facebookLoginButton: 'span:has-text("Continue with Facebook")',
-        appleLoginButton: 'span:has-text("Continue with Apple")',
+        // Social login buttons - using CSS selectors with data attributes or classes
+        googleLoginButton: 'button[data-provider="google"], a[href*="google"]',
+        facebookLoginButton: 'button[data-provider="facebook"], a[href*="facebook"]',
+        appleLoginButton: 'button[data-provider="apple"], a[href*="apple"]',
 
         // Validation elements
-        errorMessage: '#element-3',
+        errorMessage: '.error, [class*="error"], [data-testid*="error"]',
     },
 
     commands: [{
