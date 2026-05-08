@@ -3,7 +3,7 @@
  */
 module.exports.command = function(selector, timeout = 10000, retries = 3) {
     let attemptCount = 0;
-    
+
     const waitWithRetry = () => {
         return this.waitForElementVisible(selector, timeout)
             .catch(error => {

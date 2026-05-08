@@ -1,5 +1,5 @@
 module.exports = {
-  
+
     elements: {
 
         //TASKS
@@ -7,4 +7,4 @@ module.exports = {
         taskAdded2: { locateStrategy: 'xpath', selector: '//div[contains(text(),"New Task Edited")]'},
 
     }
-} 
+};

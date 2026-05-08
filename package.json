@@ -8,9 +8,11 @@
     "test:safari": "nightwatch --env safari",
     "test:chrome": "nightwatch --env chrome",
     "test:firefox": "nightwatch --env firefox",
-    "test:single": "nightwatch --env safari",
+    "test:single": "nightwatch",
     "test:parallel": "nightwatch --env safari,chrome,firefox --parallel",
-    "safaridriver:setup": "sudo safaridriver --enable"
+    "safaridriver:setup": "sudo safaridriver --enable",
+    "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix"
   },
   "keywords": [
     "nightwatch",
@@ -21,8 +23,10 @@
   "author": "Carlos Cervantes",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "chromedriver": "^114.0.0",
     "dotenv": "^16.3.1",
+    "eslint": "^10.3.0",
     "geckodriver": "^4.5.1",
     "lodash": "^4.17.21",
     "nightwatch": "^3.4.0",

@@ -8,43 +8,19 @@ module.exports = {
     },
 
     elements: {
-        // Form elements - using better selector strategies
-        emailInput: {
-            selector: '//*[@id="element-0"]',
-            locateStrategy: 'xpath',
-        },
-        passwordInput: {
-            selector: '//*[@id="element-2"]',
-            locateStrategy: 'xpath',
-        },
-        loginButton: {
-            selector: '//*[@id="todoist_app"]/div/div/div[2]/div[1]/div/div/form/button',
-            locateStrategy: 'xpath',
-        },
-        keepLoggedInCheckbox: {
-            selector: '#permanent_login',
-            locateStrategy: 'css',
-        },
+        // Form elements - using CSS selectors for better performance and maintainability
+        emailInput: '#element-0',
+        passwordInput: '#element-2',
+        loginButton: 'button[type="submit"]', // Assuming it's a submit button
+        keepLoggedInCheckbox: '#permanent_login',
 
-        // Social login buttons
-        googleLoginButton: {
-            selector: '//span[text()="Continue with Google"]',
-            locateStrategy: 'xpath',
-        },
-        facebookLoginButton: {
-            selector: '//span[text()="Continue with Facebook"]',
-            locateStrategy: 'xpath',
-        },
-        appleLoginButton: {
-            selector: '//span[text()="Continue with Apple"]',
-            locateStrategy: 'xpath',
-        },
+        // Social login buttons - using CSS selectors with text content
+        googleLoginButton: 'span:has-text("Continue with Google")',
+        facebookLoginButton: 'span:has-text("Continue with Facebook")',
+        appleLoginButton: 'span:has-text("Continue with Apple")',
 
         // Validation elements
-        errorMessage: {
-            selector: '//*[@id="element-3"]',
-            locateStrategy: 'xpath',
-        },
+        errorMessage: '#element-3',
     },
 
     commands: [{
