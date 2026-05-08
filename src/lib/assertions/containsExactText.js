@@ -13,18 +13,18 @@
  */
 
 exports.assertion = function(selector, expectedText, msg) {
-  this.message = msg || `Testing if element <${selector}> contains exact text: "${expectedText}"`;
-  this.expected = expectedText;
+    this.message = msg || `Testing if element <${selector}> contains exact text: "${expectedText}"`;
+    this.expected = expectedText;
 
-  this.pass = function(value) {
-    return value.trim() === this.expected;
-  };
+    this.pass = function(value) {
+        return value.trim() === this.expected;
+    };
 
-  this.value = function(result) {
-    return result.value;
-  };
+    this.value = function(result) {
+        return result.value;
+    };
 
-  this.command = function(callback) {
-    return this.api.getText(selector, callback);
-  };
+    this.command = function(callback) {
+        return this.api.getText(selector, callback);
+    };
 };

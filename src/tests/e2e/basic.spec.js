@@ -1,9 +1,7 @@
 describe('Basic Test', function() {
-    it('loads the homepage', function(browser) {
-        browser
-            .url(browser.launch_url)
-            .waitForElementVisible('body')
-            .assert.titleContains('Todoist')
-            .end();
+    it('loads the homepage', async function(browser) {
+        await browser.url(browser.launch_url);
+        await browser.waitForElementVisible('body');
+        await browser.assert.titleContains('Todoist');
     });
 });

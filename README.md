@@ -7,6 +7,7 @@ A robust end-to-end testing framework built with Nightwatch.js, featuring suppor
 - **Multi-browser Support**: Safari (default), Chrome, and Firefox
 - **Page Object Model**: Organized and maintainable test structure
 - **GitHub Actions Integration**: Automated CI/CD pipeline
+- **Code Quality**: ESLint configuration for consistent code style
 - **Custom Commands & Assertions**: Extended test capabilities
 - **Parallel Test Execution**: Efficient test runs across browsers
 - **HTML Reporting**: Detailed test execution reports
@@ -20,37 +21,40 @@ nightwatch-testsuite/
 ├── .github/workflows/          # GitHub Actions workflows
 │   └── e2e-tests.yml          # E2E test pipeline configuration
 ├── src/                        # Source code directory
-│   ├── components/            # Reusable test components
-│   ├── config/               # Configuration files
-├── test/                       # Test files directory
-│   ├── assertions/            # Custom assertions
-│   │   └── containsExactText.js
-│   ├── commands/              # Custom commands
-│   │   └── waitForElementWithRetry.js
-│   ├── data/                  # Test data files
-│   │   ├── testData.json     # Test-specific data
-│   │   └── userData.json     # User credentials and data
-│   ├── env/                   # Environment configurations
-│   │   └── stage-env.js
-│   ├── globals/              # Global test configurations
-│   │   └── globals.js
-│   ├── pages/               # Page Object Models
+│   ├── tests/e2e/             # Test spec files
+│   │   ├── basic.spec.js     # Basic homepage test
+│   │   └── testTodoistLogin.spec.js # Login tests
+│   ├── pages/                # Page Object Models
 │   │   ├── loginPage.js
 │   │   ├── mainPage.js
 │   │   └── taskPage.js
-│   ├── steps/              # Reusable test steps
-│   │   └── login-step.js
-│   └── tests/             # Test spec files
-│       ├── testLogin.spec.js
-│       └── testTodoistLogin.spec.js
-├── tests_output/         # Test execution outputs
-│   ├── screenshots/     # Test failure screenshots
-│   ├── logs/           # Execution logs
-│   └── reports/        # HTML test reports
-├── .env.example        # Environment variables template
-├── .gitignore         # Git ignore rules
-├── nightwatch.conf.js # Nightwatch configuration
-└── package.json       # Project dependencies and scripts
+│   ├── lib/                  # Test utilities
+│   │   ├── commands/         # Custom commands
+│   │   │   └── waitForElementWithRetry.js
+│   │   ├── assertions/       # Custom assertions
+│   │   │   └── containsExactText.js
+│   │   └── helpers/          # Helper functions
+│   │       ├── index.js
+│   │       └── login-step.js
+│   ├── config/               # Configuration files
+│   │   ├── globals.js        # Global test settings
+│   │   ├── data/             # Test data files
+│   │   │   ├── testData.json
+│   │   │   └── userData.json
+│   │   └── environments/     # Environment configurations
+│   │       └── stage-env.js
+├── config/
+│   ├── html-reporter/        # HTML report generator
+│   └── html-reporter.hbs     # Report template
+├── tests_output/             # Test execution outputs
+│   ├── screenshots/          # Failure screenshots
+│   ├── nightwatch-html-report/ # HTML reports
+│   └── *.xml,*.json         # Test result files
+├── .env.example             # Environment variables template
+├── .gitignore              # Git ignore rules
+├── eslint.config.js        # ESLint configuration
+├── nightwatch.conf.js      # Nightwatch configuration
+└── package.json            # Dependencies and scripts
 ```
 
 ## Features
@@ -145,10 +149,14 @@ npm run test:parallel
 npm run test:single path/to/test.js
 ```
 
-### Test Reports
-- HTML reports are generated in `tests_output/nightwatch-html-report/`
-- Screenshots of failures are saved in `tests_output/screenshots/`
-- Console logs are available in the terminal output
+### Code Quality
+```bash
+# Run ESLint to check code style
+npm run lint
+
+# Auto-fix linting issues
+npm run lint:fix
+```
 
 ### GitHub Actions Integration
 The repository includes a GitHub Actions workflow (`e2e-tests.yml`) that:

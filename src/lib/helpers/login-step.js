@@ -80,7 +80,7 @@ class LoginSteps {
             await this.browser
                 .assert.urlContains('/app')
                 .assert.not.elementPresent('@errorMessage');
-            
+
             await this.mainPage
                 .waitForElementVisible('@homeBtnApp')
                 .assert.visible('@homeBtnApp');

@@ -1,5 +1,5 @@
 module.exports = {
-  
+
     elements: {
         //LOGIN PAGE ELEMENTS -> TO ACCESS
         logoTodoist: { selector: '#todoist_app .Z2j5FoeQ_umI7vX0SmxF'},
@@ -10,4 +10,4 @@ module.exports = {
         //OPTIONS USER
         logOut: { selector: 'span=Log out'},
     }
-} 
+};
